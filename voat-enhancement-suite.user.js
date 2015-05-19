@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name        Voat Enhancement Suite
-// @version     0.02
+// @version     0.03
 // @description Suite of tools to enhance Voat's functionalities
 // @author      travis
 // @include     http://voat.co/*
@@ -17,7 +17,7 @@
 // @icon
 // ==/UserScript==
 
-var VESversion = 0.02;
+var VESversion = 0.03;
 
 
 // some basic utils
@@ -215,7 +215,9 @@ var VESUtils = {
         all: /^https?:\/\/(?:[\-\w\.]+\.)?voat\.co\//i,
         inbox: /^https?:\/\/(?:[\-\w\.]+\.)?voat\.co\/messaging\/([\w\.\+]+)\//i,
         comments: /^https?:\/\/(?:[\-\w\.]+\.)?voat\.co\/v\/([\w\.\+]+)\/comments\/([\w\.\+]+)/i,
-        user: /^https?:\/\/(?:[\-\w\.]+\.)?voat\.co\/user\/([\w\.\+]+)/i,
+        //commentPermalink: 
+        profile: /^https?:\/\/(?:[\-\w\.]+\.)?voat\.co\/user\/([\w\.\+]+)/i,
+        //prefs:
         //search:
         submit: /^https?:\/\/(?:[\-\w\.]+\.)?voat\.co\/(?:[\-\w\.]+\/)?submit/i,
         subverse: /^https?:\/\/(?:[\-\w\.]+\.)?voat\.co\/v\/([\w\.\+]+)/i,
@@ -225,7 +227,7 @@ var VESUtils = {
         var currURL = location.href;
         return VESUtils.regexes.all.test(currURL);
     },
-    isMatchURL: function() {
+    isMatchURL: function(moduleID) {
         if (!VESUtils.isVoat()) {
             return false;
         }
@@ -239,7 +241,7 @@ var VESUtils = {
             include = module.include;
         return VESUtils.matchesPageLocation(include, exclude);
     },
-    matchesPageLocation: function() {
+    matchesPageLocation: function(includes, excludes) {
         includes = typeof includes === 'undefined' ? [] : [].concat(includes);
         excludes = typeof excludes === 'undefined' ? [] : [].concat(excludes);
 
@@ -250,20 +252,19 @@ var VESUtils = {
         }
     },
     pageType: function() {
-
         if (typeof this.pageTypeSaved === 'undefined') {
             var pageType = '';
             var currURL = location.href;
-            if (VESUtils.regexes.user.test(currURL)) {
-                pageType = 'user';
-            } else if (VESUtils.regexes.inbox.test(currURL)) {
-                pageType = 'inbox';
+            if (VESUtils.regexes.profile.test(currURL)) {
+                pageType = 'profile';
             } else if (VESUtils.regexes.comments.test(currURL)) {
                 pageType = 'comments';
-            } else if (VESUtils.regexes.subverse.test(currURL)) {
-                pageType = 'subverse';
+            } else if (VESUtils.regexes.inbox.test(currURL)) {
+                pageType = 'inbox';
             } else if (VESUtils.regexes.submit.test(currURL)) {
                 pageType = 'submit';
+            } else if (VESUtils.regexes.subverse.test(currURL)) {
+                pageType = 'subverse';
             } else {
                 pageType = 'linklist';
             }
@@ -271,10 +272,16 @@ var VESUtils = {
         }
         return this.pageTypeSaved;
     },
-    isPageType: function(/*type1,type2*/) {
-        var page = VESUtils.pageType();
+    isPageType: function(/*type1, type2*/) {
+        var thisPage = VESUtils.pageType();
         return Array.prototype.slice.call(arguments).some(function(e) {
             return (e === 'all') || (e === thisPage);
+        });
+    },
+    matchesPageRegex: function(/*type1, type2, type3*/) {
+        var href = document.location.href;
+        return Array.prototype.slice.call(arguments).some(function(e) {
+            return e.text && e.test(href);
         });
     },
     getOptions: function(moduleID) {
@@ -370,21 +377,15 @@ var VESUtils = {
             var userLink = document.querySelector('#header-account > .logged-in > span.user > a');
             if ((userLink !== null)) {
                 this.loggedInUserCached = userLink.textContent;
-                // does this element exist?
-                //this.loggedInUserHashCached = document.querySelector('[name=uh]').value;
             } else {
                 if (tryingEarly) {
                     delete this.loggedInUserCached;
-                    //delete this.loggedInUserHashCached;
                 } else {
                     this.loggedInUserCached = null;
                 }
             }
         }
         return this.loggedInUserCached;
-    },
-    loggedInUserInfo: function(callback) {
-        // TODO
     },
     click: function(obj, btn) {
         var evt = document.createEvent('MouseEvents');
@@ -420,7 +421,7 @@ var VESConsole = {
         //console.log("resetModulePrefs(): resetting module prefs");
         prefs = {
             'debug': true,
-            'hideChildComments': false,
+            'hideChildComments': true,
             'voatingNeverEnds': false,
             'singleClick': true,
             'searchHelper': true,
@@ -557,6 +558,7 @@ modules.hideChildComments = {
     },
     go: function() {
         if ((this.isEnabled()) && (this.isMatchURL())) {
+            // begin creating the OP's 'hide child comments' button
             var toggleButton = document.createElement('li');
             this.toggleAllLink = document.createElement('a');
             this.toggleAllLink.textContent = 'hide all child comments';
@@ -566,7 +568,7 @@ modules.hideChildComments = {
             this.toggleAllLink.addEventListener('click', function(e) {
                 e.preventDefault();
                 modules.hideChildComments.toggleComments(this.getAttribute('action'));
-                if (this.getAttribute('action') === 'hide') {
+                if (this.getAttribute('action') == 'hide') {
                     this.setAttribute('action', 'show');
                     this.setAttribute('title', 'Show all comments.');
                     this.textContent = 'show all child comments';
@@ -582,36 +584,37 @@ modules.hideChildComments = {
                 // add the post's toggle
                 commentMenu.appendChild(toggleButton);
                 // get the comments of every top-level comment
-                var rootComments = document.querySelectorAll('div.commentarea > div.sitetable > div.thread > div.child');
+                // there's no parent element that groups every root comment's comments, so we'll need to get them all
+                var rootComments = document.querySelectorAll('div.commentarea > div.sitetable > div.thread');
+                // for every root comment add a hide child elements link
                 for (var i = 0, len = rootComments.length; i < len; i++) {
                     toggleButton = document.createElement('li');
                     var toggleLink = document.createElement('a');
-                    toggleLink.setAttribute('data-text','hide child comments');
+                    toggleLink.textContent = 'hide child comments';
                     toggleLink.setAttribute('action', 'hide');
                     toggleLink.setAttribute('href', '#');
-                    toggleLink.setAttribute('class', 'toggleChildren noCtrlF');
-                    // toggleLink.setAttribute('title','Hide child comments.');
+                    toggleLink.setAttribute('class', 'toggleChildren');
                     toggleLink.addEventListener('click', function(e) {
                         e.preventDefault();
                         modules.hideChildComments.toggleComments(this.getAttribute('action'), this);
                     }, true);
                     toggleButton.appendChild(toggleLink);
                     //console.log('toggleButton: ' + typeof(toggleButton));
-                    var comment = rootComments[i].parentNode.querySelector('.entry');
-                    //console.log('comment: ' + typeof(comment));
-                    if (typeof(comment) != 'undefined') {
-                        var sibMenu = comment.querySelector('ul.buttons');
-                        if (sibMenu) sibMenu.appendChild(toggleButton);
+                    // get the first (if any) comment of the root
+                    var childComment = rootComments[i].querySelector('.child');
+                    if (childComment !== null) { // only add the link if they're comments
+                        var rootMenu = rootComments[i].querySelector('ul.buttons');
+                        if (rootMenu) rootMenu.appendChild(toggleButton);
                     }
                 }
-                // TODO 
-                // if (this.options.automatic.value) {
-                //     // ensure we're not in a permalinked post..
-                //     var linkRE = /\/comments\/(?:\w+)\/(?:\w+)\/(\w+)/;
-                //     if (! location.pathname.match(linkRE)) {
-                //         VESUtils.click(this.toggleAllLink);
-                //     }
-                // }
+                if (this.options.automatic.value) {
+                    // don't auto-hide in comment permalinks
+                    // url: /comments/12345/123456
+                    var linkRE = /\/comments\/(?:\w+)\/(?:\w+)/;
+                    if (! location.pathname.match(linkRE)) {
+                        VESUtils.click(this.toggleAllLink);
+                    }
+                }
             }
         }
     },
@@ -619,39 +622,31 @@ modules.hideChildComments = {
         var commentContainers;
         if (obj) { // toggle a single comment tree
             commentContainers = $(obj).closest('.thread');
-            console.log('closing '+commentContainers.length+' comment');
         } else { // toggle all comments
             console.log('getting all comments...');
             commentContainers = document.querySelectorAll('div.commentarea > div.sitetable > div.thread');
-            console.log('closing '+commentContainers.length+' root comments');
         }
         for (var i = 0, len = commentContainers.length; i < len; i++) {
-            // console.log('getting child container ' + i);
-            // var thisChildren = commentContainers[i].querySelectorAll('div.child');
-            // console.log('action: ' + action);
-            // var thisToggleLink;
-            // if (action === 'hide') {
-            //     // select the toggleButton VES adds
-            //     thisToggleLink = commentContainers[i].querySelector('a.toggleChildren');
-            //     console.log('thisToggleLink: ' + typeof(thisToggleLink) + thisToggleLink.length);
-            //     if (thisToggleLink !== null) {
-            //         var numChildren = commentContainers[i].querySelectorAll('div.child').length;
-            //         if (thisChildren !== null) {
-            //             thisChildren.style.display = 'none';
-            //         }
-            //         thisToggleLink.setAttribute('data-text','show ' + numChildren + ' child comments');
-            //         thisToggleLink.setAttribute('action', 'show');
-            //     }
-            // } else {
-            //     thisToggleLink = commentContainers[i].querySelector('.collapsed a.expand');
-            //     if (thisToggleLink !== null) {
-            //         if (thisChildren !== null) {
-            //             thisChildren.style.display = 'block';
-            //         }
-            //         thisToggleLink.setAttribute('data-text','hide child comments');
-            //         thisToggleLink.setAttribute('action', 'hide');
-            //     }
-            // }
+            // get the children under comment i
+            var thisChildren = commentContainers[i].querySelectorAll('div.child');
+            var numChildren = thisChildren.length;
+            // get the root comment's "hide your kids" link
+            var thisToggleLink = commentContainers[i].querySelector('a.toggleChildren');
+            if (thisToggleLink !== null) {
+                // for each child in thisChildren either hide it or show it
+                for (var x = 0, y = thisChildren.length; x < y; x++) {
+                    if (action === 'hide') {
+                        // Voat's already got a .hidden class, use that
+                        thisChildren[x].classList.add('hidden');
+                        thisToggleLink.innerHTML = 'show child comments';
+                        thisToggleLink.setAttribute('action', 'show');
+                    } else {
+                        thisChildren[x].classList.remove('hidden');
+                        thisToggleLink.innerHTML = 'hide child comments';
+                        thisToggleLink.setAttribute('action', 'hide');
+                    }
+                }
+            }
         }
     }
 };
