@@ -522,6 +522,15 @@ modules.debug = {
             console.log('pageType: ' + VESUtils.pageType());
             console.log('subverse: ' + VESUtils.currentSubverse());
             console.log('isDarkMode: ' + VESUtils.isDarkMode());
+            // add a link to VES in the footer
+            var voatFooter = document.querySelector('.footer div');
+            var separator = document.createElement('span');
+            separator.setAttribute('class', 'separator');
+            var VESlink = document.createElement('a');
+            VESlink.setAttribute('href', 'http://github.com/travis-g/Voat-Enhancement-Suite');
+            VESlink.innerHTML = 'VES';
+            voatFooter.appendChild(separator);
+            voatFooter.appendChild(VESlink);
         }
     },
 };
