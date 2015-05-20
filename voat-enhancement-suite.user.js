@@ -202,7 +202,7 @@ function injectCSS(css) {
     }
 }
 
-var modules = new Array();
+var modules = {};
 
 // common utils for modules
 var VESUtils = {
@@ -486,14 +486,6 @@ var VESConsole = {
 
     },
 };
-
-/* MODULES
-IDEAS:
-+ post edited highlighter
-+ user highlighter
-+ username hider
-+ keyboard navigator
-*/
 
 modules.debug = {
     moduleID: 'debug',
