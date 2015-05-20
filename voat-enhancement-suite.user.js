@@ -387,6 +387,9 @@ var VESUtils = {
         }
         return this.loggedInUserCached;
     },
+    watchForElement: function(type, callback) {
+        // TODO
+    },
     click: function(obj, btn) {
         var evt = document.createEvent('MouseEvents');
         btn = btn || 0;
