@@ -345,7 +345,7 @@ var VESUtils = {
         return finalvalue;
     },
     elementInViewport: function (obj) {
-        // check the headerOffset - if we've pinned the subreddit bar, we need to add some pixels so the "visible" stuff is lower down the page.
+        // check the headerOffset - if we've pinned the subverse bar, we need to add some pixels so the "visible" stuff is lower down the page.
         var headerOffset = this.getHeaderOffset();
         var top = obj.offsetTop - headerOffset;
         var left = obj.offsetLeft;
@@ -425,6 +425,7 @@ var VESConsole = {
             'voatingNeverEnds': false,
             'singleClick': true,
             'searchHelper': true,
+            'filterVoat': false,
         };
         this.setModulePrefs(prefs);
         return prefs;
@@ -872,9 +873,9 @@ modules.voatingNeverEnds = {
                                 if (nextLink.getAttribute('rel').indexOf('prev') != -1) {
                                     // remove the progress indicator from the DOM, it needs to go away.
                                     me.progressIndicator.style.display = 'none';
-                                    var endOfReddit = createElementWithID('div','endOfReddit');
-                                    endOfReddit.innerHTML = 'You\'ve reached the last page available.  There are no more pages to load.';
-                                    me.siteTable.appendChild(endOfReddit);
+                                    var endOfVoat = createElementWithID('div','endOfVoat');
+                                    endOfVoat.innerHTML = 'You\'ve reached the last page available.  There are no more pages to load.';
+                                    me.siteTable.appendChild(endOfVoat);
                                     window.removeEventListener('scroll', me.handleScroll, false);
                                 }else {
                                     // console.log('not over yet');
@@ -887,11 +888,11 @@ modules.voatingNeverEnds = {
                                 me.modalContent.style.display = 'none';
                                 // window.scrollTo(0,0)
                                 // VESUtils.scrollTo(0,me.nextPageScrollY);
-                                var thisPageType = VESUtils.pageType()+'.'+VESUtils.currentSubreddit();
+                                var thisPageType = VESUtils.pageType()+'.'+VESUtils.currentSubverse();
                                 var lastTopScrolledID = VESStorage.getItem('VESmodules.voatingNeverEnds.lastVisibleIndex.'+thisPageType);
                                 var lastTopScrolledEle = document.body.querySelector('.'+lastTopScrolledID);
                                 if (!lastTopScrolledEle) {
-                                   lastTopScrolledEle = newHTML.querySelector('#siteTable div.thing');
+                                   lastTopScrolledEle = newHTML.querySelector('.sitetable div.thread');
                                 }
                                 thisXY=VESUtils.getXYpos(lastTopScrolledEle);
                                 VESUtils.scrollTo(0, thisXY.y);
@@ -915,14 +916,14 @@ modules.voatingNeverEnds = {
         }
     },
     VNEFail: function(noresults) {
-        modules.neverEndingReddit.isLoading = false;
+        modules.voatingNeverEnds.isLoading = false;
         var newHTML = createElementWithID('div','VNEFail');
         if (noresults) {
             newHTML.innerHTML = 'Voat says there\'s nothing here.';
         } else {
             console.log('Voat didn\'t give a response, it may be under heavy load.');
         }
-        modules.neverEndingReddit.siteTable.appendChild(newHTML);
+        modules.voatingNeverEnds.siteTable.appendChild(newHTML);
     },
 };
 
@@ -1040,7 +1041,7 @@ modules.searchHelper = {
         searchSubverseByDefault: {
             type: 'boolean',
             value: true,
-            description: 'Search the current subverse by default when using the search box, instead of all of reddit.'
+            description: 'Search the current subverse by default when using the search box, instead of all of voat.'
         },
         // addSearchOptions: {
         //     type: 'boolean',
@@ -1135,6 +1136,225 @@ modules.searchHelper = {
         if (restrictSearch && !document.head.querySelector('meta[content="search results"]')) { // prevent autochecking after searching with it unchecked
             restrictSearch.checked = true;
         }
+    }
+};
+modules.filterVoat = {
+    moduleID: 'searchHelper',
+    moduleName: 'Search Helper',
+    category: [ 'Filters', 'Posts' ],
+    description: 'Filter out links by keyword, domain (use User Tagger to ignore by user) or subverse (for /v/all).',
+    options: {
+        excludeUserPages: {
+            type: 'boolean',
+            value: false,
+            description: 'Don\'t filter anything on users\' profile pages'
+        },
+        regexpFilters: {
+            type: 'boolean',
+            value: true,
+            advanced: true,
+            description: 'Allow RegExp in certain filterVoat fields.' +
+                '<br>If you have filters which start with <code>/</code> and don\'t know what RegExp is, you should turn this option off.'
+        },
+        keywords: {
+            type: 'table',
+            addRowText: '+add filter',
+            fields: [{
+                    name: 'keyword',
+                    type: 'text'
+                }, {
+                    name: 'applyTo',
+                    type: 'enum',
+                    values: [{
+                        name: 'Everywhere',
+                        value: 'everywhere'
+                    }, {
+                        name: 'Everywhere but:',
+                        value: 'exclude'
+                    }, {
+                        name: 'Only on:',
+                        value: 'include'
+                    }],
+                    value: 'everywhere',
+                    description: 'Apply filter to:'
+                },
+                {
+                    name: 'subverses',
+                    type: 'list',
+                    listType: 'subverses'
+                },
+                {
+                    name: 'unlessKeyword',
+                    type: 'text'
+                },
+            ],
+            value: [],
+            description: 'Hide posts with certain keywords in the title.' +
+                '\n\n<br><br>RegExp like <code>/(this|that|theother)/i</code> is allowed for keyword (but not unlessKeyword).'
+        },
+        subverses: {
+            type: 'table',
+            addRowText: '+add filter',
+            fields: [{
+                name: 'subverse',
+                type: 'text'
+            }],
+            value: [],
+            description: 'Hide posts submitted to certain subverses.' +
+                '\n\n<br><br>RegExp like <code>/(this|that|theother)/i</code> is allowed for subverse.'
+        },
+        filterSubversesFrom: {
+            type: 'enum',
+            value: 'everywhere-except-subverse',
+            values: [{
+                name: 'Everywhere except inside a subverse',
+                value: 'everywhere-except-subverse'
+            }, {
+                name: 'Everywhere',
+                value: 'everywhere'
+            }, {
+                name: '/r/all',
+                value: 'legacy',
+            }, ]
+        },
+        domains: {
+            type: 'table',
+            addRowText: '+add filter',
+            fields: [{
+                    name: 'keyword',
+                    type: 'text'
+                }, {
+                    name: 'applyTo',
+                    type: 'enum',
+                    values: [{
+                        name: 'Everywhere',
+                        value: 'everywhere'
+                    }, {
+                        name: 'Everywhere but:',
+                        value: 'exclude'
+                    }, {
+                        name: 'Only on:',
+                        value: 'include'
+                    }],
+                    value: 'everywhere',
+                    description: 'Apply filter to:'
+                },
+                {
+                    name: 'subverses',
+                    type: 'list',
+                    listType: 'subverses'
+                }
+            ],
+            value: [],
+            description: 'Hide posts that link to certain domains.' +
+                '\n\n<br><br>Caution: domain keywords like "voat" would ignore "voat.com" and "foovoatbar.com".' +
+                '\n\n<br><br>RegExp like <code>/(this|that|theother)/i</code> is allowed for domain.'
+        },
+        flair: {
+            type: 'table',
+            addRowText: '+add filter',
+            fields: [{
+                    name: 'keyword',
+                    type: 'text'
+                }, {
+                    name: 'applyTo',
+                    type: 'enum',
+                    values: [{
+                        name: 'Everywhere',
+                        value: 'everywhere'
+                    }, {
+                        name: 'Everywhere but:',
+                        value: 'exclude'
+                    }, {
+                        name: 'Only on:',
+                        value: 'include'
+                    }],
+                    value: 'everywhere',
+                    description: 'Apply filter to:'
+                },
+                {
+                    name: 'subverses',
+                    type: 'list',
+                    listType: 'subverses'
+                }
+            ],
+            value: [],
+            description: 'Hide in posts where certain keywords are in the post\'s link flair' +
+                '\n\n<br><br>RegExp like <code>/(this|that|theother)/i</code> is allowed for flair.'
+        },   
+    },
+    isEnabled: function() {
+        return VESConsole.getModulePrefs(this.moduleID);
+    },
+    include: [
+        /^https?:\/\/(?:[\-\w\.]+\.)?voat\.co\/?(?:\??[\w]+=[\w]+&?)*/i,
+        /^https?:\/\/(?:[\-\w\.]+\.)?voat\.co\/v\/[\w]+\/?(?:\??[\w]+=[\w]+&?)*$/i
+    ],
+    excludeSaved: /^https?:\/\/(?:[\-\w\.]+\.)?voat\.co\/user\/[\w]+\/saved/i,
+    excludeModqueue: /^https?:\/\/(?:[\-\w\.]+\.)?voat\.co\/v\/[\-\w\.]+\/about\/(?:modqueue|reports|spam)\/?/i,
+    isMatchURL: function() {
+        // if (
+        //     this.options.excludeModqueue.value && this.excludeModqueue.test(location.href) ||
+        //     this.options.excludeUserPages.value && VESUtils.pageType() === 'profile'
+        // ) {
+        //     return false;
+        // }
+
+        return VESUtils.isMatchURL(this.moduleID);
+    },
+    beforeLoad: function() {
+        if (this.isEnabled()) {
+            VESUtils.addCSS('');
+        }
+    },
+    go: function() {
+        if ((this.isEnabled()) && (this.isMatchURL())) {
+            this.scanEntries();
+            VESUtils.watchForElement('sitetable', modules.filterVoat.scanEntries);
+        }
+    },
+    scanEntries: function() {
+
+    },
+    filterTitle: function(title, voat) {
+        voat = voat ? voat.toLowerCase() : null;
+        return this.filtersMatchString('keywords', title.toLowerCase(), voat);
+    },
+    filterSubverse: function(subverse) {
+        if (!this.filterFormatChecked) {
+            this.checkFilterFormat();
+        }
+        return this.filtersMatchString('subverses', subverse.toLowerCase(), null, true);
+    },
+    filterFlair: function(flair, voat) {
+        voat = voat ? voat.toLowerCase() : null;
+        return this.filtersMatchString('flair', flair.toLowerCase(), voat);
+    },
+    checkFilterFormat: function() {
+        var i = 0,
+            len = this.options.subverses.value.length,
+            changed = false,
+            check;
+
+        for (; i<len; i++) {
+            check = this.options.subverses.value[i][0];
+            if (check.substr(0,3) === '/r/') {
+                this.options.subverses.value[i][0] = check.substr(3);
+                changed = true;
+            }
+        }
+        if (changed) {
+            VESUtils.options.saveModuleOptions('filterVoat');
+        }
+        this.filterFormatChecked = true;
+    },
+    _filters: {},
+    filters: function(type) {
+        // TODO
+    },
+    regexRegex: /^\/(.*)\/([gim]+)?$/,  // RegEx to match a RegEx
+    filtersMatchString: function(filterType, stringToSearch, voat, fullmatch) {
+        // TODO
     }
 };
 
