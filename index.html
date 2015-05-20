@@ -16,11 +16,13 @@ body {
     padding: 10px;
     height: 450px;
     background: #F6F6F6 none repeat scroll 0% 0%;
+    
 }
 
 h1 {
     font-size: 2.25rem;
     color: #4399cd;
+    text-outline: 1px
 }
 
 a,
@@ -45,22 +47,27 @@ code {
     padding: 5px 12px;
     border-style: solid;
     border-color: #d1d1d1;
-    background: transparent -moz-linear-gradient(center top , #FDFDFD, #F7F7F7) repeat scroll 0 0;
+    background: transparent -webkit-linear-gradient(center top, #FDFDFD, #F7F7F7) repeat scroll 0 0;
+    background: transparent linear-gradient(center top , #FDFDFD, #F7F7F7) repeat scroll 0 0;
 }
 
-.highlight {
-    padding: 2px 6px 5px;
-    border: 1px solid #DCDCDC;
-    border-radius: 3px;
-    background-color: white;
-}
 img {
     height: 27px;
 }
 a code {
-    font-size:150%;
-    font-weight:700;
-    padding:5px 16px
+    color: #2b4758;
+    background: #bbe5ff;
+    background: -webkit-linear-gradient(top, #bbe5ff, #a6ddff);
+    background: linear-gradient(top,#bbe5ff,#a6ddff);
+    border-color: #70b7e3;
+    font-weight: 700;
+    padding: 5px 12px;
+}
+a code:hover {
+    background: #a7deff;
+    background: -webkit-linear-gradient(top, #a7deff, #91d5ff);
+    background: linear-gradient(top,#a7deff,#91d5ff);
+    border-color: #61afe0;
 }
     </style>
 </head>
