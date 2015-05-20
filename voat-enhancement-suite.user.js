@@ -963,10 +963,10 @@ modules.singleClick = {
         if ((this.isEnabled()) && (this.isMatchURL())) {
             this.applyLinks();
             if (VESUtils.isDarkMode()) {
-                VESUtils.addCSS('.VESSingleClick { color: #bcbcbc; font-weight: bold; pointer: cursor; }');
+                VESUtils.addCSS('.VESSingleClick { color: #bcbcbc; font-weight: bold; cursor: pointer; }');
                 VESUtils.addCSS('.VESSingleClick:hover { text-decoration: underline }');
             } else {
-                VESUtils.addCSS('.VESSingleClick { color: #6a6a6a; font-weight: bold; pointer: cursor; }');
+                VESUtils.addCSS('.VESSingleClick { color: #6a6a6a; font-weight: bold; cursor: pointer; }');
                 VESUtils.addCSS('.VESSingleClick:hover {text-decoration: underline }');
             }
             // watch for changes to .sitetable, then reapply
