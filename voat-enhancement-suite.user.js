@@ -494,10 +494,164 @@ $.extend(VESUtils.options, {
             alert('error - no prefs specified');
         }
     },
+    getModuleIDsByCategory: function(category) {
+        var moduleList = Object.getOwnPropertyNames(modules);
+
+        moduleList = moduleList.filter(function(moduleID) {
+            return !modules[moduleID].hidden;
+        });
+        moduleList = moduleList.filter(function(moduleID) {
+            return [].concat(modules[moduleID].category).indexOf(category) !== -1;
+        });
+        moduleList.sort(function(moduleID1, moduleID2) {
+            var a = modules[moduleID1];
+            var b = modules[moduleID2];
+
+            if (a.sort !== void 0 || b.sort !== void 0) {
+                var sortComparison = (a.sort || 0) - (b.sort || 0);
+                if (sortComparison !== 0) {
+                    return sortComparison;
+                }
+            }
+
+            if (a.moduleName.toLowerCase() > b.moduleName.toLowerCase()) return 1;
+            return -1;
+        });
+
+        return moduleList;
+    },
+    enableModule: function(moduleID, onOrOff) {
+        var module = modules[moduleID];
+        if (!module) {
+            console.warn('options.enableModule could not find module', moduleID);
+            return;
+        }
+        if (module.alwaysEnabled && !onOrOff) {
+            return;
+        }
+
+        var prefs = this.getAllModulePrefs(true);
+        prefs[moduleID] = !! onOrOff;
+        this.setModulePrefs(prefs);
+        if (typeof module.onToggle === 'function') {
+            modules[moduleID].onToggle(onOrOff);
+        }
+    },
+    setOption: function(moduleID, optionName, optionValue) {
+        if (/_[\d]+$/.test(optionName)) {
+            optionName = optionName.replace(/_[\d]+$/, '');
+        }
+        var thisOptions = this.getOptions(moduleID);
+        if (!thisOptions[optionName]) {
+            console.warn('Could not find option', moduleID, optionName);
+            return false;
+        }
+
+        var saveOptionValue;
+        if (optionValue === '') {
+            saveOptionValue = '';
+        } else if ((isNaN(optionValue)) || (typeof optionValue === 'boolean') || (typeof optionValue === 'object')) {
+            saveOptionValue = optionValue;
+        } else if (optionValue.indexOf('.') !== -1) {
+            saveOptionValue = parseFloat(optionValue);
+        } else {
+            saveOptionValue = parseInt(optionValue, 10);
+        }
+        thisOptions[optionName].value = saveOptionValue;
+        // save it to the object and to RESStorage
+        VESUtils.options.saveModuleOptions(moduleID, thisOptions);
+        return true;
+    },
+    saveModuleOptions: function(moduleID, newOptions) {
+        function minify(obj) {
+            var min = {};
+            if (obj) {
+                for (var key in obj) {
+                    if ('value' in obj[key]) {
+                        min[key] = {value: obj[key].value};
+                    }
+                }
+            }
+            return min;
+        }
+        if (newOptions) {
+            modules[moduleID].options = newOptions;
+        }
+        VESStorage.setItem('RESoptions.' + moduleID, JSON.stringify(minify(modules[moduleID].options)));
+    },
+    getOptionsFirstRun: [],
+    getOptions: function(moduleID) {
+        if (this.getOptionsFirstRun[moduleID]) {
+            // we've already grabbed these out of localstorage, so modifications should be done in memory. just return that object.
+            return modules[moduleID].options;
+        }
+        var thisOptions = localStorage.getItem('VESoptions.' + moduleID);
+        if ((thisOptions) && (thisOptions !== 'undefined') && (thisOptions !== null)) {
+            // merge options (in case new ones were added via code) and if anything has changed, update to localStorage
+            var storedOptions = safeJSON.parse(thisOptions, 'VESoptions.' + moduleID);
+            var codeOptions = modules[moduleID].options;
+            var newOption = false;
+            for (var attrname in codeOptions) {
+                codeOptions[attrname].default = codeOptions[attrname].value;
+                if (typeof storedOptions[attrname] === 'undefined') {
+                    newOption = true;
+                } else {
+                    codeOptions[attrname].value = storedOptions[attrname].value;
+                }
+            }
+            modules[moduleID].options = codeOptions;
+            if (newOption) {
+                VESUtils.options.saveModuleOptions(moduleID);
+            }
+        } else {
+            // nothing in localStorage, let's set the defaults...
+            VESUtils.options.saveModuleOptions(moduleID);
+        }
+        this.getOptionsFirstRun[moduleID] = true;
+        return modules[moduleID].options;
+    },
     create: function() {
 
     },
 });
+
+(function(module) {
+    var stagedOptions;
+
+    clearStagedOptions();
+
+    function stageOption(moduleID, optionName, optionValue) {
+        stagedOptions[moduleID] = stagedOptions[moduleID] || {};
+        stagedOptions[moduleID][optionName] = {
+            value: optionValue
+        };
+    }
+    function commitStagedOptions() {
+        $.each(stagedOptions, function (moduleID, module) {
+            $.each(module, function(optionName, option) {
+                VESUtils.options.setOption(moduleID, optionName, option.value);
+            });
+        });
+        clearStagedOptions();
+    }
+    function clearStagedOptions() {
+        stagedOptions = {};
+    }
+
+    function hasStagedOptions() {
+        return Object.getOwnPropertyNames(stagedOptions).length;
+    }
+
+    function getOptions(moduleID) {
+        return stagedOptions[moduleID];
+    }
+
+    module.reset = clearStagedOptions;
+    module.add = stageOption;
+    module.commit = commitStagedOptions;
+    module.isDirty = hasStagedOptions;
+    module.get = getOptions;
+})(VESUtils.options.stage = VESUtils.options.stage || {});
 
 $.extend(VESUtils.options.table, {
     getMatchingValue: function(moduleID, optionKey, valueIdentifiers) {
