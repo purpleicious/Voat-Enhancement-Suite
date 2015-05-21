@@ -17,7 +17,15 @@
 // @icon
 // ==/UserScript==
 
-var VESversion = 0.03;
+
+var VESMetadata = {
+    name: 'Voat Enhancement Suite',
+    version: '0.0.3',
+    categories: [ 'About RES', 'Content', 'Editing', 'Style', 'Filters', 'Posts', 'Comments', 'Subreddits', '*', 'Core' ]
+};
+
+var modules = {};
+// TODO define options for modules up here so they can be accessed more easily
 
 
 // some basic utils
@@ -202,8 +210,6 @@ function injectCSS(css) {
     }
 }
 
-var modules = {};
-
 // common utils for modules
 var VESUtils = {
     // TODO rearrange these utils logically
@@ -283,6 +289,9 @@ var VESUtils = {
         return Array.prototype.slice.call(arguments).some(function(e) {
             return e.text && e.test(href);
         });
+    },
+    options: { /* defined below VESUtils */ 
+        table: {},
     },
     getOptions: function(moduleID) {
         //console.log("getting options for " + moduleID);
@@ -417,18 +426,20 @@ var VESUtils = {
         this.isDarkModeCached = document.getElementsByTagName('link')[1].href.indexOf('Dark') > -1;
         return this.isDarkModeCached;
     },
+    firstValid: function() {
+        // TODO
+    },
 };
 
-var VESConsole = {
+$.extend(VESUtils.options, {
     resetModulePrefs: function() {
-        //console.log("resetModulePrefs(): resetting module prefs");
         prefs = {
             'debug': true,
             'hideChildComments': true,
             'voatingNeverEnds': false,
             'singleClick': true,
             'searchHelper': true,
-            'filterVoat': false,
+            'filterVoat': true,
         };
         this.setModulePrefs(prefs);
         return prefs;
@@ -476,20 +487,103 @@ var VESConsole = {
         }
     },
     setModulePrefs: function(prefs) {
-        //console.log("setting VES.modulePrefs...")
         if (prefs !== null) {
             localStorage.setItem('VES.modulePrefs', JSON.stringify(prefs));
-            //this.drawModulesPanel(); // create settings panel for modules
             return prefs;
         } else {
             alert('error - no prefs specified');
         }
     },
-    // create console
     create: function() {
 
     },
-};
+});
+
+$.extend(VESUtils.options.table, {
+    getMatchingValue: function(moduleID, optionKey, valueIdentifiers) {
+        var option = modules[moduleID].options[optionKey];
+        var values = option.value;
+        var matchingValue;
+        if (!(option.type === 'table' && values && values.length)) return;
+
+        for (var vi = 0, vlength = values.length; vi < vlength; vi++) {
+            var value = values[vi];
+            var match = false;
+            for (var fi = 0, flength = option.fields.length; fi < flength; fi++) {
+                var field = option.fields[fi];
+                var fieldValue = value[fi];
+                var matchValue = RESUtils.firstValid(valueIdentifiers[fi], valueIdentifiers[field.name]);
+
+                if (matchValue === undefined) {
+                    continue;
+                } else if (matchValue === fieldValue) {
+                    match = true;
+                    continue;
+                } else {
+                    match = false;
+                    break;
+                }
+            }
+
+            if (match) {
+                matchingValue = value;
+                break;
+            }
+        }
+
+        return matchingValue;
+    },
+    addValue: function(moduleID, optionKey, value) {
+        var option = modules[moduleID].options[optionKey];
+        if (option.type !== 'table') {
+            console.error('Tried to save table value to non-table option: modules[\'' + moduleID + '\'].options.' + optionKey);
+            return;
+        }
+
+        if (!option.value) {
+            option.value = [];
+        }
+        var values = option.value;
+
+        var optionValue = [];
+        for (var i = 0, length = option.fields.length; i < length; i++) {
+            var field = option.fields[i];
+
+            var fieldValue = VESUtils.firstValid(value[i], value[field.name], field.value);
+            optionValue.push(fieldValue);
+        }
+
+        values.push(optionValue);
+        VESUtils.options.setOption(moduleID, optionKey, values);
+
+        return optionValue;
+    },
+    getMatchingValueOrAdd: function(moduleID, optionKey, valueIdentifier, hydrateValue) {
+        var matchingValue = VESUtils.options.table.getMatchingValue(moduleID, optionKey, valueIdentifier);
+        if (!matchingValue) {
+            var value = valueIdentifier;
+            if (hydrateValue) {
+                value = hydrateValue(valueIdentifier);
+            }
+
+            matchingValue = VESUtils.options.table.addValue(moduleID, optionKey, value);
+        }
+
+        return matchingValue;
+    },
+    mapValueToObject: function(moduleID, optionKey, value) {
+        var option = modules[moduleID].options[optionKey];
+
+        var object = {};
+        for (var i = 0, length = option.fields.length; i < length; i++) {
+            var field = option.fields[i];
+
+            object[field.name] = value[i];
+        }
+
+        return object;
+    }
+});
 
 modules.debug = {
     moduleID: 'debug',
@@ -499,8 +593,8 @@ modules.debug = {
 
     },
     isEnabled: function() {
-        //console.log('debug.isEnabled(): ' + VESConsole.getModulePrefs(this.moduleID));
-        return VESConsole.getModulePrefs(this.moduleID);
+        //console.log('debug.isEnabled(): ' + VESUtils.options.getModulePrefs(this.moduleID));
+        return VESUtils.options.getModulePrefs(this.moduleID);
     },
     include: [
         'all'
@@ -547,7 +641,7 @@ modules.hideChildComments = {
         'comments'
     ],
     isEnabled: function() {
-        return VESConsole.getModulePrefs(this.moduleID);
+        return VESUtils.options.getModulePrefs(this.moduleID);
     },
     isMatchURL: function() {
         return VESUtils.isMatchURL(this.moduleID);
@@ -662,7 +756,7 @@ modules.voatingNeverEnds = {
         }
     },
     isEnabled: function() {
-        return VESConsole.getModulePrefs(this.moduleID);
+        return VESUtils.options.getModulePrefs(this.moduleID);
     },
     include: [
         'all'
@@ -951,7 +1045,7 @@ modules.singleClick = {
         }
     },
     isEnabled: function() {
-        return VESConsole.getModulePrefs(this.moduleID);
+        return VESUtils.options.getModulePrefs(this.moduleID);
     },
     inlude: [
         'all',
@@ -1070,7 +1164,7 @@ modules.searchHelper = {
     },
     description: 'Provide help with the use of search.',
     isEnabled: function() {
-        return VESConsole.getModulePrefs(this.moduleID);
+        return VESUtils.options.getModulePrefs(this.moduleID);
     },
     // include: [
     // ],
@@ -1287,7 +1381,7 @@ modules.filterVoat = {
         },   
     },
     isEnabled: function() {
-        return VESConsole.getModulePrefs(this.moduleID);
+        return VESUtils.options.getModulePrefs(this.moduleID);
     },
     include: [
         /^https?:\/\/(?:[\-\w\.]+\.)?voat\.co\/?(?:\??[\w]+=[\w]+&?)*/i,
@@ -1363,7 +1457,7 @@ modules.filterVoat = {
 
 (function(u) {
     // while there's no options dialog
-    VESConsole.resetModulePrefs();
+    VESUtils.options.resetModulePrefs();
     // load all the VES modules
     for (var i in modules) {
         moduleID = i;
