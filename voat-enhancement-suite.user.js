@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name        Voat Enhancement Suite
-// @version     0.03
+// @version     0.0.3
 // @description Suite of tools to enhance Voat's functionalities
 // @author      travis
 // @include     http://voat.co/*
@@ -1565,7 +1565,70 @@ modules.filterVoat = {
         }
     },
     scanEntries: function() {
+        var numFiltered = 0;
 
+        var entries;
+        if (typeof ele === 'undefined' || ele === null) {
+            // TODO if excludeCommentsPage
+            entries = document.querySelectorAll('.sitetable .link');
+        } else {
+            entries = ele.querySelectorAll('div.submission.link');
+        }
+        var filterSubs = (modules.filterVoat.options.filterSubversesFrom.value === 'everywhere') ||
+            (modules.filterVoat.options.filterSubversesFrom.value === 'everywhere-except-subverse' && !VESUtils.currentSubverse()) ||
+            (VESUtils.currentSubverse('all')) /* TODO sets, Voat's domain... */,
+            onSavedPage = modules.filterVoat.excludeSaved.test && modules.filterVoat.excludeSaved.test(location.href);
+
+        for (var i = 0, len = entries.length; i < len; i++) {
+            var postSubverse, currSub;
+            if (!onSavedPage) {
+                var postTitle = entries[i].querySelector('.entry a.title').textContent;
+                var postDomain = entries[i].querySelector('.entry span.domain > a');
+                postDomain = (postDomain) ? postDomain.textContent.toLowerCase() : 'voat.co';
+                var postFlair = entries[i].querySelector('.entry span.linkflairlabel');
+                var thisSubverse = entries[i].querySelector('.entry a.subverse');
+                if (thisSubverse !== null) {
+                    postSubverse = VESUtils.regexes.subverse.exec(thisSubverse.href)[1] || false;
+                } else {
+                    postSubverse = VESUtils.currentSubverse();
+                }
+
+                var filtered = false;
+
+                if (!filtered) filtered = modules.filterVoat.executeCustomFilters(entries[i]);
+
+                currSub = (VESUtils.currentSubverse()) ? VESUtils.currentSubverse().toLowerCase(): null;
+                if (!filtered) filtered = modules.filterVoat.filterTitle(postTitle, postSubverse);
+                if (!filtered) filtered = modules.filterVoat.filterDomain(postDomain, postSubverse || currSub);
+                if ((!filtered) && (filterSubs) && (postSubverse)) {
+                    filtered = modules.filterVoat.filterSubverse(postSubverse);
+                }
+                if ((!filtered) && (postFlair)) {
+                    filtered = modules.filterVoat.filterFlair(postFlair.textContent, postSubverse);
+                }
+                if (filtered) {
+                    entries[i].classList.add('VESFiltered');
+                    numFiltered++;
+                }
+            }
+            // TODO does NSFW content even make it to the client?
+            if (entries[i].classList.contains('over18')) {
+                if (modules.filterVoat.allowNSFW(postSubverse, currSub)) {
+                    entries[i].classList.add('allowOver18');
+                }
+                // else if NSFW filter allowed
+            }
+        }
+        // TODO notify if a percentage of posts is hidden
+    },
+    filterNSFW: function(filterOn) {
+        // voat hides all the NSFW stuff server-side.
+        // I'm not sure how it marks the stuff that gets through...
+    },
+    filterDomain: function(domain, voat) {
+        domain = domain ? domain.toLowerCase() : null;
+        voat = voat ? voat.toLowerCase() : null;
+        return this.filtersMatchString('domains', domain, voat);
     },
     filterTitle: function(title, voat) {
         voat = voat ? voat.toLowerCase() : null;
@@ -1589,7 +1652,7 @@ modules.filterVoat = {
 
         for (; i<len; i++) {
             check = this.options.subverses.value[i][0];
-            if (check.substr(0,3) === '/r/') {
+            if (check.substr(0,3) === '/v/') {
                 this.options.subverses.value[i][0] = check.substr(3);
                 changed = true;
             }
@@ -1605,7 +1668,61 @@ modules.filterVoat = {
     },
     regexRegex: /^\/(.*)\/([gim]+)?$/,  // RegEx to match a RegEx
     filtersMatchString: function(filterType, stringToSearch, voat, fullmatch) {
+        var module = modules.filterVoat;
+        var sources = module.options[type].value;
         // TODO
+
+        return module._filters[type];
+    },
+    // TODO I'm not sure how Voat treats NSFW stuff still...
+    // allowAllNSFW: null,
+    // subverseAllowNSFWOption: null,
+    // allowNSFW: function(postSubvers, currentSubverse) {
+    //     // I don't think we need this...
+    // },
+    regexRegex: /^\/(.*)\/([gim]+)?$/,  // RegEx to match a RegEx
+    filtersMatchString: function(filterType, stringToSearch, voat, fullmatch) {
+        var filters = modules.filterVoat.filters(filterType);
+        if (!filters || !filters.length) return false;
+        if (!stringToSearch) {
+            // means bad filter
+            return;
+        }
+        var i = filters.length;
+        var result = false;
+
+        while (i--) {
+            var filter = filters[i];
+            var skipCheck = false;
+
+            // are we checking /v/all?
+            var checkVALL = ((VESUtils.currentSubverse() === 'all') && (filter.applyList.indexOf('all') !== -1));
+            switch (filter.applyTo) {
+                case 'exclude':
+                    if ((filter.applyList.indexOf(voat) !== -1) || (checkVALL)) {
+                        skipCheck = true;
+                    }
+                    break;
+                case 'include':
+                    if ((filter.applyList.indexOf(voat) === -1) && (checkVALL)) {
+                        skipCheck = true;
+                    }
+                    break;
+            }
+        }
+        // TODO
+    },
+    executeCustomFilters: function(thing) {
+        // TODO for this.options.customFilters
+        // var advancedFilterOptions = modules.filterVoat.options['customFilters'];
+        // var filters = advancedFilterOptions.value,
+        //     config = advancedFilterOptions.cases;
+        // for (var i = 0, len = filters.length; i < len; i++) {
+        //     if (config[filters[i].body.type].evaluate(thing, filters[i].body, config)) {
+        //         return true;
+        //     }
+        // }
+        return false;
     }
 };
 
