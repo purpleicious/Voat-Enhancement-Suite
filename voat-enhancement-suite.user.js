@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name        Voat Enhancement Suite
-// @version     0.0.3
+// @version     0.0.4
 // @description Suite of tools to enhance Voat's functionalities
 // @author      travis
 // @include     http://voat.co/*
@@ -20,7 +20,7 @@
 
 var VESMetadata = {
     name: 'Voat Enhancement Suite',
-    version: '0.0.3',
+    version: '0.0.4',
     categories: [ 'About RES', 'Content', 'Editing', 'Style', 'Filters', 'Posts', 'Comments', 'Subreddits', '*', 'Core' ]
 };
 
@@ -51,23 +51,6 @@ function insertAfter(target, node) {
     } else if ((typeof(target.parentNode) != 'undefined') && (typeof(target.nextSibling) != 'undefined')) {
         target.parentNode.insertBefore( node, target.nextSibiling);
     }
-}
-function createElement(type, id, classname, textContent) {
-    obj = document.createElement(type);
-    if (id !== null) {
-        obj.setAttribute('id',id);
-    }
-    if ((typeof classname !== 'undefined') && classname && (classname !== '')) {
-        obj.setAttribute('class',classname);
-    }
-    if (textContent) {
-        if (classname && classname.split(' ').indexOf('noCtrlF') !== -1) {
-            obj.setAttribute('data-text', textContent);
-        } else {
-            obj.textContent = textContent;
-        }
-    }
-    return obj;
 }
 
 var BrowserDetect = {
@@ -185,6 +168,143 @@ var BrowserDetect = {
 };
 BrowserDetect.init();
 
+var _beforeLoadComplete = false;
+function VESdoBeforeLoad() {
+    if (document && document.html && document.html.classList) {
+        if (_beforeLoadComplete) return;
+        _beforeLoadComplete = true;
+        // if (beforeLoadDoneOnce) return;
+        // first, go through each module and set all of the options so that if a module needs to check another module's options, they're ready...
+        // console.log('get options start: ' + Date());
+        for (var thisModuleID in modules) {
+            if (typeof modules[thisModuleID] === 'object') {
+
+                // Allow the module to instaniate any dynamic options
+                if (typeof modules[thisModuleID].loadDynamicOptions === 'function') {
+                    modules[thisModuleID].loadDynamicOptions();
+                }
+            }
+        }
+        for (var thisModuleID in modules) {
+            if (typeof modules[thisModuleID] === 'object') {
+                VESUtils.options.getOptions(thisModuleID);
+            }
+        }
+
+        // console.log('get options end: ' + Date());
+        for (var thisModuleID in modules) {
+            if (typeof modules[thisModuleID] === 'object') {
+                if (typeof modules[thisModuleID].beforeLoad === 'function') {
+                    modules[thisModuleID].beforeLoad();
+                }
+            }
+        }
+        //VESUtils.addBodyClasses();
+
+        // apply style...
+        //VESUtils.addStyle(RESUtils.css);
+        // clear out css cache...
+        VESUtils.css = '';
+    } else {
+        setTimeout(VESdoBeforeLoad, 1);
+    }
+}
+
+function VESdoAfterLoad() {
+    $.each(modules, function(name, module) {
+        if (typeof module.afterLoad === 'function') {
+            module.afterLoad();
+        }
+    });
+}
+
+function VESInit() {
+    // VESUtils.addBodyClasses();
+
+    // if VESStorage isn't fully loaded, and _beforeLoadComplete isn't true,
+    // then wait. It means we haven't read all of the modules' options yet.
+    if (!VESStorage.isReady || !_beforeLoadComplete) {
+        setTimeout(VESInit, 10);
+        return;
+    }
+
+    // $.browser shim since jQuery removed it
+    $.browser = {
+        safari: BrowserDetect.isSafari(),
+        mozilla: BrowserDetect.isFirefox(),
+        chrome: BrowserDetect.isChrome(),
+        opera: BrowserDetect.isOpera()
+    };
+
+    $.fn.safeHtml = function(string) {
+        if (!string) return '';
+        else return $(this).html(VESUtils.sanitizeHTML(string));
+    };
+
+    VESUtils.initObservers();
+    var localStorageFail = false;
+
+    // Check for localStorage functionality...
+    // try {
+    //     localStorage.setItem('VES.localStorageTest', 'test');
+    //     VESUtils.runtime.localStorageTest();
+    // } catch (e) {
+    //     localStorageFail = true;
+    // }
+
+    if (localStorageFail) {
+        // TODO
+    } else {
+        document.body.addEventListener('mousemove', VESUtils.setMouseXY, false);
+        // added this if statement because some people's Greasemonkey "include" lines are getting borked or ignored, so they're calling RES on non-reddit pages.
+        if (VESUtils.regexes.all.test(location.href)) {
+            // go through each module and run it
+            for (var thisModuleID in modules) {
+                if (typeof modules[thisModuleID] === 'object') {
+                    // console.log(thisModuleID + ' start: ' + Date());
+                    // perfTest(thisModuleID+' start');
+                    modules[thisModuleID].go();
+                    // perfTest(thisModuleID+' end');
+                    // console.log(thisModuleID + ' end: ' + Date());
+                }
+            }
+            //VESUtils.addStyle(RESUtils.css);
+            //  console.log('end: ' + Date());
+        }
+    }
+
+    VESUtils.postLoad = true;
+}
+
+var safeJSON = {
+    // safely parses JSON and won't kill the whole script if JSON.parse fails
+    // if localStorageSource is specified, will offer the user the ability to delete that localStorageSource to stop further errors.
+    parse: function(data, localStorageSource, silent) {
+        try {
+            if (typeof(safari) != 'undefined') {
+                if (data.substring(0,2) == 's{') {
+                    data = data.substring(1,data.length);
+                }
+            }
+            return JSON.parse(data);
+        } catch (error) {
+            if (silent) return {};
+            if (localStorageSource) {
+                var msg = 'Error caught: JSON parse failure on the following data from "'+localStorageSource+'": <textarea rows="5" cols="50">' + data + '</textarea><br>RES can delete this data to stop errors from happening, but you might want to copy/paste it to a text file so you can more easily re-enter any lost information.';
+                alert(msg, function() {
+                    // back up a copy of the corrupt data
+                    localStorage.setItem(localStorageSource + '.error', data);
+                    // delete the corrupt data
+                    VESStorage.removeItem(localStorageSource);
+                });
+            } else {
+                alert('Error caught: JSON parse failure on the following data: ' + data);
+            }
+            return {};
+        }
+    }
+};
+
 // Get firebug to show console.log
 if (typeof(unsafeWindow) != 'undefined') {
     if ((typeof(unsafeWindow.console) != 'undefined') && (typeof(self.on) != 'function')) {
@@ -290,7 +410,7 @@ var VESUtils = {
             return e.text && e.test(href);
         });
     },
-    options: { /* defined below VESUtils */ 
+    options: { /* defined below in $.extends() */ 
         table: {},
     },
     getOptions: function(moduleID) {
@@ -377,6 +497,21 @@ var VESUtils = {
         str = str.replace(regex, '');
         return str;
     },
+    sanitizeHTML: function(htmlStr) {
+        return window.Pasteurizer.safeParseHTML(htmlStr).wrapAll('<div></div>').parent().html();
+    },
+    firstValid: function() {
+        for (var i = 0, len = arguments.length; i < len; i++) {
+            var argument = arguments[i];
+
+            if (argument === void 0) continue;
+            if (argument === null) continue;
+            if (typeof argument === 'number' && isNaN(argument)) continue;
+
+            return argument;
+        }
+    },
+    
     // adds vendor prefixes to CSS snippits.
     cssVendorPrefix: function(css) {
         return '-webkit-' + css + ';' + '-o-' + css + ';' + '-moz-' + css + ';' + '-ms-' + css + ';' + css + ';';
@@ -426,10 +561,57 @@ var VESUtils = {
         this.isDarkModeCached = document.getElementsByTagName('link')[1].href.indexOf('Dark') > -1;
         return this.isDarkModeCached;
     },
-    firstValid: function() {
+};
+
+// createElement functions
+VESUtils.createElement = function(elementType, id, classname, textContent) {
+    var obj = document.createElement(elementType);
+    if (id) {
+        obj.setAttribute('id', id);
+    }
+    if ((typeof classname !== 'undefined') && classname && (classname !== '')) {
+        obj.setAttribute('class', classname);
+    }
+    if (textContent) {
+        if (classname && classname.split(' ').indexOf('noCtrlF') !== -1) {
+            obj.setAttribute('data-text', textContent);
+        } else { 
+            obj.textContent = textContent;
+        }
+    }
+    return obj;
+};
+$.extend(VESUtils.createElement, {
+    toggleButton: function(moduleID, fieldID, enabled, onText, offText, isTable) {
         // TODO
     },
-};
+    commaDelimitedNumber: function(nStr) {
+        nStr = typeof nStr === 'string' ? nStr.replace(/[^\w]/, '') : nStr;
+        var locale = document.querySelector('html').getAttribute('lang') || 'en';
+        return new Number(nStr).toLocaleString(locale);
+    },
+    table: function(items, call, context) {
+        if (!items || !call) return;
+        // Sanitize single item into items array
+        if (!(items.length && typeof items !== 'string')) items = [items];
+
+        var description = [];
+        description.push('<table>');
+
+        for (var i = 0; i < items.length; i++) {
+            var item = call(items[i], i, items, context);
+            if (typeof item === 'string') {
+                description.push(item);
+            } else if (item.length) {
+                description = description.concat(item);
+            }
+        }
+        description.push('</table>');
+        description = description.join('\n');
+
+        return description;
+    }
+});
 
 $.extend(VESUtils.options, {
     resetModulePrefs: function() {
@@ -445,42 +627,41 @@ $.extend(VESUtils.options, {
         return prefs;
     },
     getAllModulePrefs: function(force) {
+        var storedPrefs;
         // don't repeat if it's been done already
-        if ((!force) && (typeof(this.getAllModulePrefsCached) != 'undefined')) return this.getAllModulePrefsCached;
+        if ((!force) && (typeof(this.getAllModulePrefsCached) != 'undefined')) {
+            return this.getAllModulePrefsCached;  
+        } 
         //console.log('entering getAllModulePrefs()...')
         if (localStorage.getItem('VES.modulePrefs') !== null) {
-            var storedPrefs = JSON.parse(localStorage.getItem('VES.modulePrefs'));
+            storedPrefs = safeJSON.parse(localStorage.getItem('VES.modulePrefs'));
         } else {
             //console.log('getAllModulePrefs: resetting stored prefs');
             // first time VES has been run
             storedPrefs = this.resetModulePrefs();
         }
-        if (storedPrefs === null) {
+        if (!storedPrefs) {
             storedPrefs = {};
         }
         // create a JSON object to return all prefs
         //console.log('getAllModulePrefs: creating prefs object');
         var prefs = {};
-        for (var i in modules) {
-            if (storedPrefs[i]) {
-                prefs[i] = storedPrefs[i];
-            } else if (storedPrefs[i] === null) {
+        for (var module in modules) {
+            if (storedPrefs[module]) {
+                prefs[module] = storedPrefs[module];
+            } else if (!modules[module].disabledByDefault && (storedPrefs[module] === null || module.alwaysEnabled)) {
                 // new module! ...or no preferences.
-                prefs[i] = true;
+                prefs[module] = true;
             } else {
-                prefs[i] = false;
+                prefs[module] = false;
             }
         }
-        if ((typeof(prefs) != 'undefined') && (prefs != 'undefined') && (prefs)) {
-            return prefs;
-        }
+        this.getAllModulePrefsCached = prefs;
+        return prefs;
     },
     getModulePrefs: function(moduleID) {
-        //console.log('entered getModulePrefs for ' + moduleID)
         if (moduleID) {
-            //console.log('running getModulePrefs for ' + moduleID);
             var prefs = this.getAllModulePrefs();
-            //console.log('getModulePrefs: returning prefs for ' + moduleID);
             return prefs[moduleID];
         } else {
             alert('no module name specified for getModulePrefs');
@@ -610,49 +791,7 @@ $.extend(VESUtils.options, {
         this.getOptionsFirstRun[moduleID] = true;
         return modules[moduleID].options;
     },
-    create: function() {
-
-    },
 });
-
-(function(module) {
-    var stagedOptions;
-
-    clearStagedOptions();
-
-    function stageOption(moduleID, optionName, optionValue) {
-        stagedOptions[moduleID] = stagedOptions[moduleID] || {};
-        stagedOptions[moduleID][optionName] = {
-            value: optionValue
-        };
-    }
-    function commitStagedOptions() {
-        $.each(stagedOptions, function (moduleID, module) {
-            $.each(module, function(optionName, option) {
-                VESUtils.options.setOption(moduleID, optionName, option.value);
-            });
-        });
-        clearStagedOptions();
-    }
-    function clearStagedOptions() {
-        stagedOptions = {};
-    }
-
-    function hasStagedOptions() {
-        return Object.getOwnPropertyNames(stagedOptions).length;
-    }
-
-    function getOptions(moduleID) {
-        return stagedOptions[moduleID];
-    }
-
-    module.reset = clearStagedOptions;
-    module.add = stageOption;
-    module.commit = commitStagedOptions;
-    module.isDirty = hasStagedOptions;
-    module.get = getOptions;
-})(VESUtils.options.stage = VESUtils.options.stage || {});
-
 $.extend(VESUtils.options.table, {
     getMatchingValue: function(moduleID, optionKey, valueIdentifiers) {
         var option = modules[moduleID].options[optionKey];
@@ -738,6 +877,43 @@ $.extend(VESUtils.options.table, {
         return object;
     }
 });
+(function(module) {
+    var stagedOptions;
+
+    clearStagedOptions();
+
+    function stageOption(moduleID, optionName, optionValue) {
+        stagedOptions[moduleID] = stagedOptions[moduleID] || {};
+        stagedOptions[moduleID][optionName] = {
+            value: optionValue
+        };
+    }
+    function commitStagedOptions() {
+        $.each(stagedOptions, function (moduleID, module) {
+            $.each(module, function(optionName, option) {
+                VESUtils.options.setOption(moduleID, optionName, option.value);
+            });
+        });
+        clearStagedOptions();
+    }
+    function clearStagedOptions() {
+        stagedOptions = {};
+    }
+
+    function hasStagedOptions() {
+        return Object.getOwnPropertyNames(stagedOptions).length;
+    }
+
+    function getOptions(moduleID) {
+        return stagedOptions[moduleID];
+    }
+
+    module.reset = clearStagedOptions;
+    module.add = stageOption;
+    module.commit = commitStagedOptions;
+    module.isDirty = hasStagedOptions;
+    module.get = getOptions;
+})(VESUtils.options.stage = VESUtils.options.stage || {});
 
 modules.debug = {
     moduleID: 'debug',
