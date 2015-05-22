@@ -1201,7 +1201,7 @@ modules.singleClick = {
     isEnabled: function() {
         return VESUtils.options.getModulePrefs(this.moduleID);
     },
-    inlude: [
+    include: [
         'all',
     ],
     exclude: [
@@ -1555,16 +1555,19 @@ modules.filterVoat = {
     },
     beforeLoad: function() {
         if (this.isEnabled()) {
+            console.log('running beforeLoad of filterVoat');
             VESUtils.addCSS('');
         }
     },
     go: function() {
         if ((this.isEnabled()) && (this.isMatchURL())) {
+            VESUtils.addCSS('.VESFiltered { border: 1px solid red !important; }');
+            console.log('filterVoat is scanning for content.');
             this.scanEntries();
             VESUtils.watchForElement('sitetable', modules.filterVoat.scanEntries);
         }
     },
-    scanEntries: function() {
+    scanEntries: function(ele) {
         var numFiltered = 0;
 
         var entries;
@@ -1608,6 +1611,7 @@ modules.filterVoat = {
                 }
                 if (filtered) {
                     entries[i].classList.add('VESFiltered');
+                    console.log('filterVoat hid an entry.');
                     numFiltered++;
                 }
             }
@@ -1664,17 +1668,50 @@ modules.filterVoat = {
     },
     _filters: {},
     filters: function(type) {
-        // TODO
-    },
-    regexRegex: /^\/(.*)\/([gim]+)?$/,  // RegEx to match a RegEx
-    filtersMatchString: function(filterType, stringToSearch, voat, fullmatch) {
         var module = modules.filterVoat;
         var sources = module.options[type].value;
-        // TODO
+        if (!module._filters[type] || module._filters[type].length !== sources.length) {
+            var filters = [];
+            module._filters[type] = filters;
+
+            for (var i = 0; i < sources.length; i++) {
+                var filter = {};
+                filters.push(filter);
+
+                var source = sources[i];
+                if (typeof source !== 'object') {
+                    source = [ source ];
+                }
+
+                var searchString = source[0];
+                if (modules.filterVoat.options.regexpFilters.value && modules.filterVoat.regexRegex.test(searchString)) {
+                    var regexp = modules.filterVoat.regexRegex.exec(searchString);
+                    try {
+                        searchString = new RegExp(regexp[1], regexp[2]);
+                    } catch(e) {
+                        // notify user
+                        console.log('Something went wrong with a RegExp in filterVoat.');
+                        console.log('RegExp: ' + searchString);
+                        console.log(e.toString());
+                    }
+                } else {
+                    searchString = searchString.toString().toLowerCase();
+                }
+                filter.searchString = searchString;
+
+                var applyTo = source[1] || 'everywhere';
+                filter.applyTo = applyTo;
+
+                var applyList = (source[2] || '').toLowerCase().split(',');
+                filter.applyList = applyList;
+
+                var exceptSearchString = source[3] && source[3].toString().toLowerCase() || '';
+                filter.exceptSearchString = exceptSearchString;
+            }
+        }
 
         return module._filters[type];
     },
-    // TODO I'm not sure how Voat treats NSFW stuff still...
     // allowAllNSFW: null,
     // subverseAllowNSFWOption: null,
     // allowNSFW: function(postSubvers, currentSubverse) {
@@ -1709,8 +1746,56 @@ modules.filterVoat = {
                     }
                     break;
             }
+
+            if (!skipCheck && filter.exceptSearchString.length && stringToSearch.indexOf(filter.exceptSearchString) !== -1) {
+                // skip checking the filter
+                continue;
+            } else if (filter.searchString.test) {
+                // filter is a regex
+                if (filter.searchString.test(stringToSearch)) {
+                    result = true;
+                    break;
+                }
+            } else if (fullmatch) {
+                // simple full string match
+                if (stringToSearch === filter.searchString) {
+                    result = true;
+                    break;
+                }
+            } else {
+                // in-string match
+                if (stringToSearch.indexOf(filter.searchString) !== -1) {
+                    result = true;
+                    break;
+                }
+            }
         }
-        // TODO
+        return result;
+    },
+    toggleFilter: function(e) {
+        var thisSubverse = $(e.target).data('subverse').toLowerCase();
+        var filteredSubverses = modules.filterVoat.options.subverses.value || [];
+        var exists = false;
+        for (var i = 0, len = filteredSubverses.length; i < len; i++) {
+            if ((filteredSubverses[i]) && (filteredSubverses[i][0].toLowerCase() == thisSubverse)) {
+                exists = true;
+                filteredSubverses.splice(i, 1);
+                e.target.setAttribute('title', 'Filter this subverse from /v/all');
+                e.target.textContent = '+filter';
+                e.target.classList.remove('remove');
+                break;
+            }
+        }
+        if (!exists) {
+            var thisObj = [thisSubverse, 'everywhere', ''];
+            filteredSubverses.push(thisObj);
+            e.target.setAttribute('title', 'Stop filtering this subverse from /v/all');
+            e.target.textContent = '-filter';
+            e.target.classList.add('remove');
+        }
+        modules.filterVoat.options.subverses.value = filteredSubverses;
+        // save changes
+        VESUtils.options.saveModuleOptions('filterVoat');
     },
     executeCustomFilters: function(thing) {
         // TODO for this.options.customFilters
@@ -1734,7 +1819,8 @@ modules.filterVoat = {
         moduleID = i;
         modules[moduleID].go();
     }
+
+
     // inject all VES modules' CSS
     injectCSS(VESUtils.css);
-
 })();

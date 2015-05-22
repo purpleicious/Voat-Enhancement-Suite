@@ -6,9 +6,9 @@
     - Allows you to hide all children of top-level comments, and can be configured to do so automatically.
 - Search Helper - `searchHelper`
     - Will be expanded, but auto-selects "Limit the search to current subverse" when searching.
+- filterVoat - `filterVoat`
+    - Filter out links by keyword, domain (use User Tagger to ignore by user) or subverse (for /v/all).
 
 ### In development
 - VoatingNeverEnds - `voatingNeverEnds`
     - Auto-loads the next page of subverse and front-page post listings.
-- filterVoat - `filterVoat`
-    - Filter out links by keyword, domain (use User Tagger to ignore by user) or subverse (for /v/all).
