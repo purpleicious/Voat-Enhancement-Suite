@@ -938,11 +938,11 @@ modules.debug = {
         if ((this.isEnabled()) && (this.isMatchURL())) {
             // do some basic logging.
             console.log('VES loaded: ' + Date());
-            console.log('isVoat: ' + VESUtils.isVoat());
+            console.log('OS: ' + BrowserDetect.OS);
+            console.log('browser: ' + BrowserDetect.browser + ' ' + BrowserDetect.version);
             console.log('loggedInUser: ' + VESUtils.loggedInUser());
             console.log('pageType: ' + VESUtils.pageType());
             console.log('subverse: ' + VESUtils.currentSubverse());
-            console.log('isDarkMode: ' + VESUtils.isDarkMode());
             // add a link to VES in the footer
             var voatFooter = document.querySelector('.footer div');
             var separator = document.createElement('span');
