@@ -1987,15 +1987,111 @@ modules.filterVoat = {
     }
 };
 
-(function(u) {
-    // while there's no options dialog
-    VESUtils.options.resetModulePrefs();
-    // load all the VES modules
+(function(u) {  // define all the variables up here
+    var $, $$, cmd, Conf, Config, CustomCSS, doc, escape, me,
+        __slice = [].slice,
+        __indexOf = [].indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; },
+        __hasProp = {}.hasOwnProperty,
+        __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
+        __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
+
+
+    Array.prototype.indexOf = function(val, i) {
+        var length;
+        i || (i = 0);
+        length = this.length;
+        while (i < length) {
+            if (this[i] === val) {
+                return i;
+            }
+            i++;
+        }
+        return -1;
+    };
+
+    doc = document;
+    cmd = console;
+    me = {
+        v: '0.1.0',
+        namespace: 'ves.',
+        name: 'ves'
+    };
+
+    Conf = {};
+
+    escape = (function() {
+        var str = {
+            '&': '&amp;',
+            '"': '&quot;',
+            '<': '&lt;',
+            '>': '&gt;'
+        };
+        var r = String.prototype.replace;
+        var regex = /[&"'<>]/g;
+        fn = function(x) {
+            return str[x];
+        };
+        return function(text) {
+            return r.call(text, regex, fn);
+        };
+    })();
+
+    $ = function(selector, root) {
+        if (root === null) {
+            root = doc.body;
+        }
+        return root.querySelector(selector);
+    };
+
+    $.extend = function(obj, prop) {
+        for (var key in prop) {
+            var value = prop[key];
+            if (prop.hasOwnProperty(key)) {
+                obj[key] = value;
+            }
+        }
+    };
+
+    $.id = function(id) {
+        return doc.getElementById(id);
+    };
+
+    $.ready = function(func) {
+        if (doc.readyState !== 'loading') {
+            $.queueTask(func);
+            return;
+        }
+        var callback = function() {
+            $.off(doc, 'DOMContentLoaded', callback);
+            return func();
+        };
+        return $.on(doc, 'DOMContentLoaded', callback);
+    };
+
+    $.extend = function(obj, props) {
+        for (var key in props) {
+            val = props[key];
+            obj[key] = val;
+        }
+    };
+
+    $.checkbox = {
+        checked: function() {
+            $.set(this.name, this.checked);
+            Conf[this.name] = this.checked;
+            return Conf[this.name];
+        },
+        value: function() {
+            $.set(this.name, this.value.trim());
+            Conf[this.name] = this.value;
+            return Conf[this.name];
+        }
+    };
+
     for (var i in modules) {
         moduleID = i;
         modules[moduleID].go();
     }
-
 
     // inject all VES modules' CSS
     injectCSS(VESUtils.css);
