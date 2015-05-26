@@ -17,13 +17,7 @@
 // @icon
 // ==/UserScript==
 
-
-var VESMetadata = {
-    name: 'Voat Enhancement Suite',
-    version: '0.0.4',
-};
-
-var Modules;
+var Modules, Config;
 
 // GreaseMonkey API compatibility for non-GM browsers (Chrome, Safari, Firefox)
 // @copyright      2009, 2010 James Campos
@@ -78,22 +72,33 @@ if ((typeof GM_deleteValue == 'undefined') || (typeof GM_addStyle == 'undefined'
     // GM_xmlhttpRequest
 }
 
-var safeJSON = {
-    parse: function(data, storageSource, silent) {
-        try {
-            return JSON.parse(data);
-        } catch (e) {
-            if (silent) return {};
-            if (storageSource) {
-                var msg = 'Error caught: JSON parse fail on \'' + data + '\' from ' + storageSource;
-                cli.error(msg);
-                //cli.error('Storing and deleting corrupt data.');
-                localStorage.setItem(storageSource + '.error', data);
-            } else {
-                cli.error('Error caught: JSON parse failed on: ' + data);
-            }
-            return {};
+Config = {
+    main: {
+        'Modules': {
+            'debug': [true, 'Diagnostic tools for VES. Useful for submitting issues to GitHub!'],
+            'Hide Child Comments': [true, 'Allows you to hide all child comments for easier reading.'],
+            'Single Click': [true, 'Adds an [l+c] link that opens both the link and the comments page in new tabs.'],
+            'Search Helper': [true, 'Makes searching through Voat a bit easier.'],
+            'filterVoat': [false, 'Filter out links by keyword, domain (use User Tagger to ignore by user) or subverse (for /v/all).'],
+            'voatingNeverEnds': [false, 'Load the next pages of Voat automatically.']
+        },
+    },
+};
+
+
+var safeJSON = function(data, storageSource, silent) {
+    try {
+        return JSON.parse(data);
+    } catch (e) {
+        if (silent) return {};
+        if (storageSource) {
+            cli.error('Error caught: JSON parse fail on \'' + data + '\' from ' + storageSource);
+            //cli.error('Storing and deleting corrupt data.');
+            localStorage.setItem(storageSource + '.error', data);
+        } else {
+            cli.error('Error caught: JSON parse failed on: ' + data);
         }
+        return {};
     }
 };
 
@@ -330,7 +335,7 @@ var VESUtils = {
     },
 };
 
-// createElement functions
+// shim for previous versions
 VESUtils.createElement = function(elementType, id, classname, textContent) {
     var obj = document.createElement(elementType);
     if (id) {
@@ -401,7 +406,7 @@ $.extend(VESUtils.options, {
         } 
         //console.log('entering getAllModulePrefs()...')
         if (localStorage.getItem('VES.modulePrefs') !== null) {
-            storedPrefs = safeJSON.parse(localStorage.getItem('VES.modulePrefs'));
+            storedPrefs = safeJSON(localStorage.getItem('VES.modulePrefs'));
         } else {
             //console.log('getAllModulePrefs: resetting stored prefs');
             // first time VES has been run
@@ -536,7 +541,7 @@ $.extend(VESUtils.options, {
         var thisOptions = localStorage.getItem('VESoptions.' + moduleID);
         if ((thisOptions) && (thisOptions !== 'undefined') && (thisOptions !== null)) {
             // merge options (in case new ones were added via code) and if anything has changed, update to localStorage
-            var storedOptions = safeJSON.parse(thisOptions, 'VESoptions.' + moduleID);
+            var storedOptions = safeJSON(thisOptions, 'VESoptions.' + moduleID);
             var codeOptions = Modules[moduleID].options;
             var newOption = false;
             for (var attrname in codeOptions) {
@@ -685,7 +690,7 @@ $.extend(VESUtils.options.table, {
 // TODO hardcoded extension settings
 
 (function(u) {  // define all the variables up here
-    var $, $$, doc, cli, info, Config, VES, System, CustomCSS, escape, safeJSON,
+    var $, $$, doc, cli, info, Conf, VES, System, CustomCSS, escape, safeJSON, Settings,
         __slice = [].slice,
         __indexOf = [].indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; },
         __hasProp = {}.hasOwnProperty,
@@ -711,8 +716,11 @@ $.extend(VESUtils.options.table, {
     info = {
         v: '0.1.0',
         namespace: 'VES.',
-        name: 'VES'
+        name: 'Voat Enhancement Suite',
+        abbr: 'VES'
     };
+
+    Conf = {}; // loaded configs
 
     System = {
         init: function() {
@@ -1067,47 +1075,6 @@ $.extend(VESUtils.options.table, {
         return true;
     };
 // }}}
-
-    VES = { // for the extension itself
-        localStorageFail: false,
-        init: function() {
-            VESUtils.options.resetModulePrefs();
-            try {
-                $.set(me.namespace + 'test');
-            } catch(e) {
-                localStorageFail = true;
-            }
-            if (localStorageFail) {
-                //cli.error('Storage failed or is inaccessible. Are you in a private browsing session?');
-                // TODO create a visual indicator
-            }
-            $.asap((function() {
-                return doc.head;
-            }), this.loadModules);
-        },
-        loadModules: function() {
-            var module;
-            // if there's preloading needed, do it
-            for (module in Modules) {
-                if (typeof Modules[module] === 'object') {
-                    if (typeof Modules[module].beforeLoad === 'function') {
-                        Modules[module].beforeLoad();
-                    }
-                }
-            }
-            // run the modules
-            for (module in Modules) {
-                if (typeof Modules[module] === 'object') {
-                    try {
-                        Modules[module].go();
-                    } catch (e) {
-                        cli.log('\"' + Modules[module].moduleName + '\" initialization crashed!');
-                        cli.error(e.name + ': ' + e.message);
-                    }
-                }
-            }
-        }
-    };
 
     Modules = {};
 // {{{  Modules.*
@@ -1547,7 +1514,7 @@ $.extend(VESUtils.options.table, {
     Modules.singleClick = {
         moduleID: 'singleClick',
         moduleName: 'Single Click',
-        description: 'Adds an [l+c] link that opens a link and the comments page in new tabs for you in one click.',
+        description: 'Adds an [l+c] link that opens both the link and the comments page in new tabs.',
         options: {
             openOrder: {
                 type: 'enum',
@@ -1648,12 +1615,12 @@ $.extend(VESUtils.options.table, {
                     }
                 }
             }
-        },
+        }
     };
     Modules.searchHelper = {
         moduleID: 'searchHelper',
         moduleName: 'Search Helper',
-        category: 'Posts',
+        description: 'Provide help with the use of search.',
         options: {
             searchSubverseByDefault: {
                 type: 'boolean',
@@ -1682,7 +1649,6 @@ $.extend(VESUtils.options.table, {
             //     description: 'When clicking on a post\'s flair, search its subverse for that flair. <p>May not work in some subverses that hide the actual flair and add pseudo-flair with CSS (only workaround is to disable subverse style).</p>'
             // }
         },
-        description: 'Provide help with the use of search.',
         isEnabled: function() {
             return VESUtils.options.getModulePrefs(this.moduleID);
         },
@@ -2177,8 +2143,91 @@ $.extend(VESUtils.options.table, {
     };
 // }}}
 
+    Settings = {
+        "export": function() {
+            return $.get(Conf, function(Conf) {
+                return Settings.downloadExport('Settings', {
+                    version: info.version,
+                    date: Date.now(),
+                    Conf: Conf
+                });
+            });
+        },
+        downloadExport: function(title, data) {
+            var a = $.el('a', { // craft a link
+                download: 'VES v' + info.version + ' ' + title + '.' + data.date + '.json',
+                href: "data:application/json;base64," + (btoa(unescape(encodeURIComponent(JSON.stringify(data, null, 2)))))
+            });
+            $.add(doc.body, a);
+            a.click();  // force clicking the download link
+            return $.rm(a); // remove the download link
+        }
+    };
+
+    VES = { // for the extension itself
+        localStorageFail: false,
+        init: function() {
+            VESUtils.options.resetModulePrefs();
+
+            // test for localStorage
+            try {
+                $.set(me.namespace + 'test');
+            } catch(e) {
+                localStorageFail = true;
+            }
+            if (localStorageFail) {
+                //cli.error('Storage failed or is inaccessible. Are you in a private browsing session?');
+                // TODO create a visual indicator
+            }
+
+            // load Config into memory
+            load = function(parent, obj) {
+                if (obj instanceof Array) {
+                    Conf[parent] = obj[0];
+                } else if (typeof obj === 'object') {
+                    for (var key in obj) {
+                        var val = obj[key];
+                        load(key, val);
+                    }
+                } else {
+                    Conf[parent] = obj;
+                }
+            };
+            load(null, Config);
+
+            // load previously saved configs
+            return $.get(Conf, function(items) {
+                $.extend(Conf, items);
+                return $.asap((function() {
+                    return doc.head;
+                }), VES.loadModules);
+            });
+        },
+        loadModules: function() {
+            var module;
+            // if there's preloading needed, do it
+            for (module in Modules) {
+                if (typeof Modules[module] === 'object') {
+                    if (typeof Modules[module].beforeLoad === 'function') {
+                        Modules[module].beforeLoad();
+                    }
+                }
+            }
+            // run the modules
+            for (module in Modules) {
+                if (typeof Modules[module] === 'object') {
+                    try {
+                        Modules[module].go();
+                    } catch (e) {
+                        cli.log('\"' + Modules[module].moduleName + '\" initialization crashed!');
+                        cli.error(e.name + ': ' + e.message);
+                    }
+                }
+            }
+        }
+    };
     VES.init();
 
     // inject all VES modules' CSS
     $.addStyle(VESUtils.css);
-})();
+}).call(this);
