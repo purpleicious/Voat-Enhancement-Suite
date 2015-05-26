@@ -17,7 +17,122 @@
 // @icon
 // ==/UserScript==
 
-var Modules, Config;
+var info, Config, System, Modules;
+
+info = {
+    v: '0.1.0',
+    namespace: 'VES.',
+    name: 'Voat Enhancement Suite',
+    abbr: 'VES'
+};
+
+Config = {
+    main: {
+        'Modules': {
+            'Debugging Tools': [true, 'Diagnostic tools for VES. Useful for submitting issues to GitHub!'],
+            'Hide Child Comments': [true, 'Allows you to hide all child comments for easier reading.'],
+            'Single Click': [true, 'Adds an [l+c] link that opens both the link and the comments page in new tabs.'],
+            'Search Helper': [true, 'Makes searching through Voat a bit easier.'],
+            'filterVoat': [false, 'Filter out links by keyword, domain (use User Tagger to ignore by user) or subverse (for /v/all).'],
+            'Voating Never Ends': [false, 'Load the next pages of Voat automatically.'],
+            'User Tags': [true, 'Tag Voat users in posts and comments.'],
+        },
+        'hideChildComments': {
+            'Auto Hide Child Comments': [true, 'Automatically hide all child comments on page load.']
+        }
+    },
+};
+
+System = {
+    init: function() {
+        this.browser = this.searchString(this.dataBrowser) || "unknown browser";
+        this.version = this.searchVersion(navigator.userAgent)
+            || this.searchVersion(navigator.appVersion)
+            || "unknown version";
+        this.OS = this.searchString(this.dataOS) || "unknown OS";
+    },
+    searchString: function (data) {
+        for (var i=0;i<data.length;i++) {
+            var dataString = data[i].string;
+            var dataProp = data[i].prop;
+            this.versionSearchString = data[i].versionSearch || data[i].identity;
+            if (dataString) {
+                if (dataString.indexOf(data[i].subString) != -1)
+                    return data[i].identity;
+            }
+            else if (dataProp)
+                return data[i].identity;
+        }
+    },
+    searchVersion: function (dataString) {
+        var index = dataString.indexOf(this.versionSearchString);
+        if (index == -1) return;
+        return parseFloat(dataString.substring(index+this.versionSearchString.length+1));
+    },
+    dataBrowser: [
+        {
+            string: navigator.userAgent,
+            subString: "Chrome",
+            identity: "Chrome"
+        },
+        {
+            string: navigator.vendor,
+            subString: "Apple",
+            identity: "Safari",
+            versionSearch: "Version"
+        },
+        {
+            prop: window.opera,
+            identity: "Opera",
+            versionSearch: "Version"
+        },
+        {
+            string: navigator.vendor,
+            subString: "KDE",
+            identity: "Konqueror"
+        },
+        {
+            string: navigator.userAgent,
+            subString: "Firefox",
+            identity: "Firefox"
+        },
+        {
+            string: navigator.vendor,
+            subString: "Camino",
+            identity: "Camino"
+        },
+        {
+            string: navigator.userAgent,
+            subString: "MSIE",
+            identity: "Explorer",
+            versionSearch: "MSIE"
+        },
+    ],
+    dataOS : [
+        {
+            string: navigator.platform,
+            subString: "Win",
+            identity: "Windows"
+        },
+        {
+            string: navigator.platform,
+            subString: "Mac",
+            identity: "Mac"
+        },
+        {
+               string: navigator.userAgent,
+               subString: "iPhone",
+               identity: "iPhone/iPod"
+        },
+        {
+            string: navigator.platform,
+            subString: "Linux",
+            identity: "Linux"
+        }
+    ]
+};
+System.init();
+
 
 // GreaseMonkey API compatibility for non-GM browsers (Chrome, Safari, Firefox)
 // @copyright      2009, 2010 James Campos
@@ -57,10 +172,6 @@ if ((typeof GM_deleteValue == 'undefined') || (typeof GM_addStyle == 'undefined'
         console.log(message);
     };
 
-    GM_registerMenuCommand = function(name, funk) {
-    //todo
-    };
-
     GM_setValue = function(name, value) {
         value = (typeof value)[0] + value;
         localStorage.setItem(name, value);
@@ -72,20 +183,7 @@ if ((typeof GM_deleteValue == 'undefined') || (typeof GM_addStyle == 'undefined'
     // GM_xmlhttpRequest
 }
 
-Config = {
-    main: {
-        'Modules': {
-            'debug': [true, 'Diagnostic tools for VES. Useful for submitting issues to GitHub!'],
-            'Hide Child Comments': [true, 'Allows you to hide all child comments for easier reading.'],
-            'Single Click': [true, 'Adds an [l+c] link that opens both the link and the comments page in new tabs.'],
-            'Search Helper': [true, 'Makes searching through Voat a bit easier.'],
-            'filterVoat': [false, 'Filter out links by keyword, domain (use User Tagger to ignore by user) or subverse (for /v/all).'],
-            'voatingNeverEnds': [false, 'Load the next pages of Voat automatically.']
-        },
-    },
-};
-
-
+// don't kill everything if JSON parse fails
 var safeJSON = function(data, storageSource, silent) {
     try {
         return JSON.parse(data);
@@ -119,6 +217,7 @@ var VESUtils = {
         //search:
         submit: /^https?:\/\/(?:[\-\w\.]+\.)?voat\.co\/(?:[\-\w\.]+\/)?submit/i,
         subverse: /^https?:\/\/(?:[\-\w\.]+\.)?voat\.co\/v\/([\w\.\+]+)/i,
+        dashboard: /^https?:\/\/(dashboard\.)?voat.co\/v\/dashboard\/([\w\.\+]+)/i,
         //subversePostListing:
     },
     isVoat: function() {
@@ -155,6 +254,8 @@ var VESUtils = {
             var currURL = location.href;
             if (VESUtils.regexes.profile.test(currURL)) {
                 pageType = 'profile';
+            } else if (VESUtils.regexes.dashboard.test(currURL)) {
+                pageType = 'dashboard';
             } else if (VESUtils.regexes.comments.test(currURL)) {
                 pageType = 'comments';
             } else if (VESUtils.regexes.inbox.test(currURL)) {
@@ -394,6 +495,7 @@ $.extend(VESUtils.options, {
             'singleClick': true,
             'searchHelper': true,
             'filterVoat': false,
+            'userTags': true,
         };
         this.setModulePrefs(prefs);
         return prefs;
@@ -511,7 +613,7 @@ $.extend(VESUtils.options, {
             saveOptionValue = parseInt(optionValue, 10);
         }
         thisOptions[optionName].value = saveOptionValue;
-        // save it to the object and to RESStorage
+        // save it to the object and to VESStorage
         VESUtils.options.saveModuleOptions(moduleID, thisOptions);
         return true;
     },
@@ -530,7 +632,7 @@ $.extend(VESUtils.options, {
         if (newOptions) {
             Modules[moduleID].options = newOptions;
         }
-        VESStorage.setItem('RESoptions.' + moduleID, JSON.stringify(minify(Modules[moduleID].options)));
+        VESStorage.setItem('VESOptions.' + moduleID, JSON.stringify(minify(Modules[moduleID].options)));
     },
     getOptionsFirstRun: [],
     getOptions: function(moduleID) {
@@ -538,7 +640,7 @@ $.extend(VESUtils.options, {
             // we've already grabbed these out of localstorage, so modifications should be done in memory. just return that object.
             return Modules[moduleID].options;
         }
-        var thisOptions = localStorage.getItem('VESoptions.' + moduleID);
+        var thisOptions = localStorage.getItem('VESOptions.' + moduleID);
         if ((thisOptions) && (thisOptions !== 'undefined') && (thisOptions !== null)) {
             // merge options (in case new ones were added via code) and if anything has changed, update to localStorage
             var storedOptions = safeJSON(thisOptions, 'VESoptions.' + moduleID);
@@ -577,7 +679,7 @@ $.extend(VESUtils.options.table, {
             for (var fi = 0, flength = option.fields.length; fi < flength; fi++) {
                 var field = option.fields[fi];
                 var fieldValue = value[fi];
-                var matchValue = RESUtils.firstValid(valueIdentifiers[fi], valueIdentifiers[field.name]);
+                var matchValue = VESUtils.firstValid(valueIdentifiers[fi], valueIdentifiers[field.name]);
 
                 if (matchValue === undefined) {
                     continue;
@@ -690,7 +792,7 @@ $.extend(VESUtils.options.table, {
 // TODO hardcoded extension settings
 
 (function(u) {  // define all the variables up here
-    var $, $$, doc, cli, info, Conf, VES, System, CustomCSS, escape, safeJSON, Settings,
+    var $, $$, doc, cli, info, Conf, VES, escape, safeJSON, Settings,
         __slice = [].slice,
         __indexOf = [].indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; },
         __hasProp = {}.hasOwnProperty,
@@ -713,104 +815,7 @@ $.extend(VESUtils.options.table, {
     doc = document;
     cli = console;
 
-    info = {
-        v: '0.1.0',
-        namespace: 'VES.',
-        name: 'Voat Enhancement Suite',
-        abbr: 'VES'
-    };
-
     Conf = {}; // loaded configs
-
-    System = {
-        init: function() {
-            this.browser = this.searchString(this.dataBrowser) || "unknown browser";
-            this.version = this.searchVersion(navigator.userAgent)
-                || this.searchVersion(navigator.appVersion)
-                || "unknown version";
-            this.OS = this.searchString(this.dataOS) || "unknown OS";
-        },
-        searchString: function (data) {
-            for (var i=0;i<data.length;i++) {
-                var dataString = data[i].string;
-                var dataProp = data[i].prop;
-                this.versionSearchString = data[i].versionSearch || data[i].identity;
-                if (dataString) {
-                    if (dataString.indexOf(data[i].subString) != -1)
-                        return data[i].identity;
-                }
-                else if (dataProp)
-                    return data[i].identity;
-            }
-        },
-        searchVersion: function (dataString) {
-            var index = dataString.indexOf(this.versionSearchString);
-            if (index == -1) return;
-            return parseFloat(dataString.substring(index+this.versionSearchString.length+1));
-        },
-        dataBrowser: [
-            {
-                string: navigator.userAgent,
-                subString: "Chrome",
-                identity: "Chrome"
-            },
-            {
-                string: navigator.vendor,
-                subString: "Apple",
-                identity: "Safari",
-                versionSearch: "Version"
-            },
-            {
-                prop: window.opera,
-                identity: "Opera",
-                versionSearch: "Version"
-            },
-            {
-                string: navigator.vendor,
-                subString: "KDE",
-                identity: "Konqueror"
-            },
-            {
-                string: navigator.userAgent,
-                subString: "Firefox",
-                identity: "Firefox"
-            },
-            {
-                string: navigator.vendor,
-                subString: "Camino",
-                identity: "Camino"
-            },
-            {
-                string: navigator.userAgent,
-                subString: "MSIE",
-                identity: "Explorer",
-                versionSearch: "MSIE"
-            },
-        ],
-        dataOS : [
-            {
-                string: navigator.platform,
-                subString: "Win",
-                identity: "Windows"
-            },
-            {
-                string: navigator.platform,
-                subString: "Mac",
-                identity: "Mac"
-            },
-            {
-                   string: navigator.userAgent,
-                   subString: "iPhone",
-                   identity: "iPhone/iPod"
-            },
-            {
-                string: navigator.platform,
-                subString: "Linux",
-                identity: "Linux"
-            }
-        ]
-    };
-    System.init();
 
     escape = (function() {
         var str = {
@@ -1006,7 +1011,7 @@ $.extend(VESUtils.options.table, {
     $.sync = function(key, callback) {
         key = info.namespace + key;
         $.syncing[key] = callback;
-        return $.oldValue[key] = GM_getValue(key);
+        return $.oldValue[key] = localStorage.getValue(key);
     };
 
     $.desync = function(key) {
@@ -1036,7 +1041,7 @@ $.extend(VESUtils.options.table, {
         }
         return $.taskQueue(function() {
             for (key in items) {
-                if (val = GM_getValue(info.namespace + key)) {
+                if (val = localStorage.getItem(info.namespace + key)) {
                     items[key] = JSON.parse(val);
                 }
             }
@@ -1049,9 +1054,10 @@ $.extend(VESUtils.options.table, {
             key = info.namespace + key;
             val = JSON.stringify(val);
             if (key in $.syncing) {
+                cli.log('key is in $.syncing');
                 localStorage.setItem(key, val);
             }
-            return GM_setValue(key, val);
+            return localStorage.setItem(key, val);
         };
         return function(keys, val) {
             var key;
@@ -2141,6 +2147,109 @@ $.extend(VESUtils.options.table, {
             return false;
         }
     };
+    Modules.userTags = {
+        moduleID: 'userTags',
+        moduleName: 'User Tags',
+        category: 'Users',
+        description: 'Tag Voat users in posts and comments.',
+        options: {
+            hardIgnore: {
+                type: 'boolean',
+                value: false,
+                description: 'When on, the ignored user\'s entire post is hidden, not just the title.'
+            }
+        },
+        isEnabled: function() {
+            return VESUtils.options.getModulePrefs(this.moduleID);
+        },
+        isMatchURL: function() {
+            return VESUtils.isMatchURL(this.moduleID);
+        },
+        include: [
+            'all',
+        ],
+        //exclude: [],
+        beforeLoad: function() {
+            if ((this.isEnabled()) && (this.isMatchURL())) {
+                // load CSS
+            }
+        },
+        usernameSelector: 'p.tagline a.author, .sidecontentbox a.author, div.md a[href^="/u/"], div.md a[href^="/user/"]',
+        go: function() {
+            if ((this.isEnabled()) && (this.isMatchURL())) {
+
+                this.tags = null;
+                if (typeof tags !== 'undefined') {
+                    this.tags = safeJSON(tags, 'userTags.tags', true);
+                }
+                this.applyTags();
+            }
+        },
+        applyTags: function(ele) {
+            ele = ele || doc;
+        },
+        applyTag: function(authorObj) {
+            var userObject = [],
+                thisTag = null,
+                thisColor = null,
+                thisIgnore = null,
+                thisAuthor, thisPost, thisComment;
+
+            if ((authorObj) && (!($.hasClass(authorObj, 'userTagged'))) && (typeof authorObj !== 'undefined') && (authorObj !== null)) {
+                if (authorObj.getAttribute('data-username')) {
+                    thisAuthor = authorObj.getAttribute('data-username');
+                }
+                noTag = false;
+                if ((thisAuthor) && (thisAuthor.substr(0, 3) === '/u/')) {
+                    noTag = true;
+                    thisAuthor = thisAuthor.substr(3);
+                }                
+                thisAuthor = thisAuthor.toLowerCase();
+                if (!noTag) {
+                    $.addClass(authorObj, 'userTagged');
+                    if (typeof userObject[thisAuthor] === 'undefined') {
+                        if (this.tags && this.tags[thisAuthor]) {
+                            if (typeof this.tags[thisAuthor].tag !== 'undefined') {
+                                thisTag = this.tags[thisAuthor].tag;
+                            }
+                            if (typeof this.tags[thisAuthor].color !== 'undefined') {
+                                thisColor = this.tags[thisAuthor].color;
+                            }
+                            if (typeof this.tags[thisAuthor].ignore !== 'undefined') {
+                                thisIgnore = this.tags[thisAuthor].ignore;
+                            }
+                        }
+                        userObject[thisAuthor] = {
+                            tag: thisTag,
+                            color: thisColor,
+                            ignore: thisIgnore,
+                        };
+                    }
+                    var tag = $.el('span', {
+                        className: 'VESUserTag',
+                        alt: thisAuthor,
+                        textContent: '+'
+                    });
+                    $.after(authorObj, tag);
+                }
+            }
+        },
+        createTagDialog: function() {
+
+        },
+        closeTagDialog: function() {
+
+        },
+        saveUserTag: function() {
+
+        },
+        ignoreComment:function() {
+
+        },
+        ignoreUser: function() {
+
+        },
+    };
 // }}}
 
     Settings = {
@@ -2171,12 +2280,12 @@ $.extend(VESUtils.options.table, {
 
             // test for localStorage
             try {
-                $.set(me.namespace + 'test');
+                $.set('test', test);
             } catch(e) {
                 localStorageFail = true;
             }
             if (localStorageFail) {
-                //cli.error('Storage failed or is inaccessible. Are you in a private browsing session?');
+                cli.error('Storage failed or is inaccessible. Are you in a private browsing session?');
                 // TODO create a visual indicator
             }
 
