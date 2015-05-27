@@ -2,6 +2,8 @@
 
 Voat Enhancement Suite (or VES) is an alpha userscript designed to enhance the user experience of Voat.co.
 
+News, discussions, and general help can be found on VES's official subverse, [/v/Enhancement](https://voat.co/v/Enhancement).
+
 ## Introduction
 
 Voat.co is in alpha development. Many features provided by Reddit Enhancement Suite are already built in to the site's user experience, however there are some features not included (keyboard navigation, new comment highlighting, &c). This userscript is intended to add those features eventually.
