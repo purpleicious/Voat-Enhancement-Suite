@@ -45,7 +45,6 @@ var Config = {
         'userTags': {
             'Hard Ignore': [false, 'When on, the ignored user\'s entire post is hidden, not just the title.'],
             'Dim Ignored Content': [false, 'Reduce the opacity of ignored user\'s content.'],
-
         }
     },
 };
@@ -213,7 +212,8 @@ var $, $$;
     };
 
     $.rmAll = function(root) {
-        return root.textContent = null;
+        root.textContent = null;
+        return root.textContent;
     };
 
     $.fragment = function() {
@@ -323,7 +323,7 @@ var $, $$;
     $.sync = function(key, callback) {
         key = info.namespace + key;
         $.syncing[key] = callback;
-        return $.oldValue[key] = localStorage.getValue(key);
+        return $.oldValue[key] = localStorage.getItem(key);
     };
 
     // onChange
@@ -355,7 +355,7 @@ var $, $$;
         }
         return $.taskQueue(function() {
             for (key in items) {
-                if (val = GM_getValue(info.namespace + key)) {
+                if (val = localStorage.getItem(info.namespace + key)) {
                     items[key] = JSON.parse(val);
                 }
             }
@@ -370,7 +370,7 @@ var $, $$;
             if (key in $.syncing) {
                 localStorage.setItem(key, val);
             }
-            return GM_setValue(key, val);
+            return localStorage.setItem(key, val);
         };
         return function(keys, val) {
             if (typeof keys === 'string') {
@@ -538,6 +538,10 @@ System.init();
 
 
 var Utils = {
+    css: '',
+    addCSS: function(css) {
+        this.css += css;
+    },
     regexes: {
         all: /^https?:\/\/(?:[\-\w\.]+\.)?voat\.co\//i,
         inbox: /^https?:\/\/(?:[\-\w\.]+\.)?voat\.co\/messaging\/([\w\.\+]+)\//i,
@@ -619,10 +623,6 @@ var Utils = {
 // common utils for modules
 var VESUtils = {
     // TODO rearrange these utils logically
-    css: '',    // CSS for ALL of VES's modules
-    addCSS: function(css) {
-        this.css += css;
-    },
     options: { /* defined below in $.extends() */ 
         table: {},
     },
@@ -724,11 +724,7 @@ var VESUtils = {
             return argument;
         }
     },
-    
-    // adds vendor prefixes to CSS snippits.
-    cssVendorPrefix: function(css) {
-        return '-webkit-' + css + ';' + '-o-' + css + ';' + '-moz-' + css + ';' + '-ms-' + css + ';' + css + ';';
-    },
+
     loggedInUser: function(tryingEarly) {
         if (typeof this.loggedInUserCached === 'undefined') {
             var userLink = document.querySelector('#header-account > .logged-in > span.user > a');
@@ -761,12 +757,6 @@ var VESUtils = {
     },
     elementUnderMouse: function(obj) {
         // TODO
-    },
-    isEmpty: function(obj) {
-        for(var prop in obj) {
-            if(obj.hasOwnProperty(prop)) return false;
-        }
-        return true;
     },
     isDarkMode: function() {
         // check if isDarkMode has been run already
@@ -834,7 +824,8 @@ $.extend(VESUtils.options, {
             'singleClick': true,
             'searchHelper': true,
             'filterVoat': false,
-            'userTags': true,
+            'userTags': false,
+            'voatingBooth': false
         };
         this.setModulePrefs(prefs);
         return prefs;
@@ -1135,6 +1126,18 @@ Modules.debug = {
     moduleID: 'debug',
     moduleName: 'VES Debugger',
     description: 'VES analytics for debugging.',
+    options: {
+        printSystemInfos: {
+            type: 'boolean',
+            value: true,
+            description: 'Print system information (OS & browser) to the console. Helps when submitting bug reports.'
+        },
+        printLocalStorage: {
+            type: 'boolean',
+            value: false,
+            description: 'Print the contents of localStorage to the console on every page load.'
+        },
+    },
     isEnabled: function() {
         // technically cheating
         return true;
@@ -1147,10 +1150,10 @@ Modules.debug = {
     },
     go: function() {
         if ((this.isEnabled()) && (this.isMatchURL())) {
-            // basic logging
             cli.log('VES loaded: ' + Date());
-            cli.log('OS: ' + System.OS);
-            cli.log('browser: ' + System.browser + ' ' + System.version);
+
+            this.printSystemInfos();
+
             // add a link to VES in the footer
             var separator = $.el('span', {
                 className: 'separator',
@@ -1164,6 +1167,24 @@ Modules.debug = {
             $.add(footer, link);
         }
     },
+    printSystemInfos: function() {
+        if (this.options.printSystemInfos) {
+            cli.log('System Information:');
+            var json = {
+                'OS': System.OS,
+                'Browser': System.browser + ' ' + System.version
+            };
+            cli.log(JSON.stringify(json));
+        }
+    },
+    printLocalStorage: function() {
+        // this should probably go in Utils
+        cli.log('localStorage data...')
+        for (var key in localStorage) {
+            cli.log(key + ':')
+            cli.log(localStorage[key]);
+        }
+    }
 };
 Modules.hideChildComments = {
     moduleID: 'hideChildComments',
@@ -1317,11 +1338,11 @@ Modules.singleClick = {
     beforeLoad: function() {
         if ((this.isEnabled()) && (this.isMatchURL())) {
             if (VESUtils.isDarkMode()) {
-                VESUtils.addCSS('.VESSingleClick { color: #bcbcbc; font-weight: bold; }');
-                VESUtils.addCSS('.VESSingleClick:hover { text-decoration: underline; cursor: pointer; }');
+                Utils.addCSS('.VESSingleClick { color: #bcbcbc; font-weight: bold; }');
+                Utils.addCSS('.VESSingleClick:hover { text-decoration: underline; cursor: pointer; }');
             } else {
-                VESUtils.addCSS('.VESSingleClick { color: #6a6a6a; font-weight: bold; }');
-                VESUtils.addCSS('.VESSingleClick:hover { text-decoration: underline; cursor: pointer; }');
+                Utils.addCSS('.VESSingleClick { color: #6a6a6a; font-weight: bold; }');
+                Utils.addCSS('.VESSingleClick:hover { text-decoration: underline; cursor: pointer; }');
             }
         }
     },
@@ -1453,17 +1474,17 @@ Modules.searchHelper = {
             // if (this.options.addSubmitButton.value) {
             //     searchExpando = document.getElementById('searchexpando');
             //     if (searchExpando) {
-            //         VESUtils.addCSS('#searchexpando .searchexpando-submit { text-align:center; }');
+            //         Utils.addCSS('#searchexpando .searchexpando-submit { text-align:center; }');
             //         var submitDiv = '<div class="searchexpando-submit"><button type="submit">search</button></div>';
             //         $(searchExpando).append(submitDiv);
             //     }
             // }
             // if (this.options.toggleSearchOptions.value && Utils.regexes.search.test(location.href)) {
-            //     VESUtils.addCSS('.searchpane-toggle-hide { float: right; margin-top: -1em } .searchpane-toggle-show { float: right; } .searchpane-toggle-show:after { content:"\u25BC"; margin-left:2px; }.searchpane-toggle-hide:after { content: "\u25B2"; margin-left: 2px; }');
+            //     Utils.addCSS('.searchpane-toggle-hide { float: right; margin-top: -1em } .searchpane-toggle-show { float: right; } .searchpane-toggle-show:after { content:"\u25BC"; margin-left:2px; }.searchpane-toggle-hide:after { content: "\u25B2"; margin-left: 2px; }');
             //     if (this.options.hideSearchOptions.value || location.hash === '#ves-hide-options') {
             //         $('body').addClass('ves-hide-options');
             //     }
-            //     VESUtils.addCSS('.ves-hide-options .search-summary, .ves-hide-options .searchpane, .ves-hide-options .searchfacets { display: none; } .ves-hide-options .searchpane-toggle-show { display: block; } .searchpane-toggle-show { display: none; }');
+            //     Utils.addCSS('.ves-hide-options .search-summary, .ves-hide-options .searchpane, .ves-hide-options .searchfacets { display: none; } .ves-hide-options .searchpane-toggle-show { display: block; } .searchpane-toggle-show { display: none; }');
             //     $('.content .searchpane').append('<a href="#ves-hide-options" class="searchpane-toggle-hide">hide search options</a>');
             //     $('.content .searchpane ~ .menuarea').prepend('<a href="#ves-show-options" class="searchpane-toggle-show">show search options</a>');
             //     $('.searchpane-toggle-hide').on('click', function() {
@@ -1474,7 +1495,7 @@ Modules.searchHelper = {
             //     });
             // }
             // if (this.options.searchByFlair) {
-            //     VESUtils.addCSS('.ves-flairSearch { cursor: pointer; position: relative; } .linkflairlabel.ves-flairSearch a { position: absolute; top: 0; left: 0; right: 0; bottom: 0; }');
+            //     Utils.addCSS('.ves-flairSearch { cursor: pointer; position: relative; } .linkflairlabel.ves-flairSearch a { position: absolute; top: 0; left: 0; right: 0; bottom: 0; }');
             //     $('.sitetable').on('mouseenter', '.title > .linkflairlabel:not(.ves-flairSearch)', function(e) {
             //         var parent = $(e.target).closest('.thing')[0],
             //             srMatch = Utils.regexes.subverse.exec(parent.querySelector('.entry a.subverse')),
@@ -1600,6 +1621,124 @@ Modules.userTags = {
 
     },
 };
+Modules.voatingBooth = {
+    moduleID: 'voatingBooth',
+    moduleName: 'Voating Booth',
+    description: 'UI enhancements for Voat.',
+    options: {
+        fullVoat: {
+            type: 'boolean',
+            value: false,
+            description: 'Make Voat use the full screen width?'
+        },
+        pinHeader: {
+            type: 'enum',
+            values: [{
+                name: 'None',
+                value: 'none'
+            }, {
+                name: 'Subverse Bar only',
+                value: 'sub'
+            }, {
+                name: 'Full Header',
+                value: 'header'
+            }],
+            value: 'none',
+            description: 'Pin header elements to the page top, even when scrolling.'
+        }
+    },
+    include: [
+        'all'
+    ],
+    isEnabled: function() {
+        return VESUtils.options.getModulePrefs(this.moduleID);
+    },
+    isMatchURL: function() {
+        return Utils.isMatchURL(this.moduleID);
+    },
+    beforeLoad: function() {
+        if ((this.isEnabled()) && (this.isMatchURL())) {
+            if (this.options.fullVoat.value) {
+                var css = '#header-container { padding-left: 10px; padding-right: 10px }';
+                css += '#header-banner { max-width: initial }';
+                css += 'body > #container { margin-left: 10px; margin-right: 10px; max-width: initial }';
+                Utils.addCSS(css);
+            }
+            switch (this.options.pinHeader.value) {
+                case 'header':
+                    $.addClass(doc.body, 'pinHeader-header');
+                    break;
+                case 'sub':
+                    $.addClass(doc.body, 'pinHeader-sub');
+                    break;
+                default:
+                    break;
+            }
+        }
+    },
+    go: function() {
+        if ((this.isEnabled()) && this.isMatchURL()) {
+            switch (this.options.pinHeader.value) {
+                case 'header':
+                    this.pinHeader();
+                    break;
+                case 'sub':
+                    this.pinSubverseBar();
+                    break;
+                default:
+                    break;
+            }
+        }
+    },
+    pinHeader: function() {
+        var header = $.id('header');
+        if (header === null) {
+            return;
+        }
+
+        var spacer = $.el('div');
+        spacer.id = 'VESPinnedHeaderSpacer';
+
+        var css = '#sr-header-area { left: 0; right: 0 }';
+        spacer.style.height = $j('#header').outerHeight() + 'px';
+
+        $.before(header.nextSibling, spacer);
+
+        css += 'body > #container { margin-top: 10px }';
+        css += '#header { position: fixed }';
+        css += '#header { left: 0; right: 0 }';
+        css += '#sr-more-link: { position: fixed }';
+        Utils.addCSS(css);
+        cli.log(css);
+        cli.log(Utils.css);
+    },
+    pinSubverseBar: function() {
+        // Make the subverse bar at the top of the page a fixed element
+
+        var sb = $.id('sr-header-area');
+        if (sb === null) {
+            return;
+        }
+        var header = $.id('header');
+
+        // add a dummy <div> inside the header to replace the subreddit bar (for spacing)
+        var spacer = $.el('div');
+        spacer.style.paddingTop = window.getComputedStyle(sb, null).paddingTop;
+        spacer.style.paddingBottom = window.getComputedStyle(sb, null).paddingBottom;
+        spacer.style.height = window.getComputedStyle(sb, null).height;
+
+        //window.setTimeout(function(){
+        // add the spacer; take the subreddit bar out of the header and put it above
+        header.insertBefore(spacer, sb);
+        doc.body.insertBefore(sb, header);
+
+        var css = '#header-bottom-left { margin-top: 19px; }';
+        css += 'div#sr-header-area {position: fixed; z-index: 10000 !important; left: 0; right: 0; }';
+        //this.pinCommonElements(sm);
+        css += '#sr-more-link: {position: fixed;}';
+        Utils.addCSS(css);
+    },
+};
 
 
 (function(u) {
@@ -1632,6 +1771,7 @@ Modules.userTags = {
         localStorageFail: false,
         init: function() {
             pathname = location.pathname.split('/');
+            VESUtils.options.resetModulePrefs();
 
             // test for localStorage
             try {
@@ -1640,7 +1780,7 @@ Modules.userTags = {
                 localStorageFail = true;
             }
             if (localStorageFail) {
-                cli.error('Storage failed or is inaccessible. Are you in a private browsing session?');
+                // cli.error('Storage failed or is inaccessible. Are you in a private browsing session?');
                 // TODO create a visual indicator
             }
 
@@ -1677,7 +1817,7 @@ Modules.userTags = {
                     }
                 }
             }
-            // run the modules
+            // run the modules' .go() function
             for (module in Modules) {
                 if (typeof Modules[module] === 'object') {
                     try {
@@ -1688,10 +1828,10 @@ Modules.userTags = {
                     }
                 }
             }
+            // inject the CSS from all the modules
+            $.addStyle(Utils.css, 'VESStyles');
         }
     };
     VES.init();
 
-    // inject all VES modules' CSS
-    $.addStyle(VESUtils.css);
 }).call(this);
