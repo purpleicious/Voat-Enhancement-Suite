@@ -16,6 +16,11 @@
 // @updateURL   https://github.com/travis-g/Voat-Enhancement-Suite/raw/master/voat-enhancement-suite.user.js
 // @icon
 // ==/UserScript==
+'use strict';
+
+// make sure we can still use regular jQuery, 
+// since we'll be using our own
+var $j = jQuery.noConflict();
 
 var info = {
     v: '0.1.0',
@@ -36,7 +41,12 @@ var Config = {
             'User Tags': [true, 'Tag Voat users in posts and comments.'],
         },
         'hideChildComments': {
-            'Auto Hide Child Comments': [true, 'Automatically hide all child comments on page load.']
+            'Auto Hide Child Comments': [true, 'Automatically hide all child comments on page load.'],
+        },
+        'userTags': {
+            'Hard Ignore': [false, 'When on, the ignored user\'s entire post is hidden, not just the title.'],
+            'Dim Ignored Content': [false, 'Reduce the opacity of ignored user\'s content.'],
+
         }
     },
 };
@@ -92,18 +102,20 @@ if ((typeof GM_deleteValue == 'undefined') || (typeof GM_addStyle == 'undefined'
 }
 
 
-// make some sorta-jQuery functions, http://api.jquery.com/
-var $, $$, doc, cli,
-    __slice = [].slice,
+// shortening
+var doc = document,
+    cli = console;
+
+// function shorteners
+var __slice = [].slice,
     __indexOf = [].indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; },
     __hasProp = {}.hasOwnProperty,
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
     __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
 
-doc = document;
-cli = console;
-
-// {{{ jQuery function definitions 
+// make some sorta-jQuery functions, http://api.jquery.com/
+var $, $$;
+// {{{ 
     // querySelector
     $ = function(selector, root) {
         if (root === null) {
@@ -173,6 +185,38 @@ cli = console;
         return style;
     };
 
+    $.addClass = function(/*element, class1, class2...*/) {
+        var el = arguments[0], classnames = 2 <= arguments.length ? __slice.call(arguments, 1) : [];
+        for (var i = 0, len = classnames.length; i < len; i++) {
+            var classname = classnames[i];
+            el.classList.add(classname);
+        }
+    };
+
+    $.rmClass = function(/*element, class1, class2...*/) {
+        var el = arguments[0], classnames = 2 <= arguments.length ? __slice.call(arguments, 1) : [];
+        for (var i = 0, len = classnames.length; i < len; i++) {
+            var classname = classnames[i];
+            el.classList.remove(classname);
+        }
+    };
+
+    $.toggleClass = function(el, classname) {
+        return el.classList.toggle(classname);
+    };
+
+    $.hasClass = function(el, classname) {
+        return __indexOf.call(el.classList, classname) >= 0;
+    };
+
+    $.rm = function(el) {
+        return el.remove();
+    };
+
+    $.rmAll = function(root) {
+        return root.textContent = null;
+    };
+
     $.fragment = function() {
         return doc.createDocumentFragment();
     };
@@ -182,9 +226,9 @@ cli = console;
             return nodes;
         }
         // if theres a bunch, create a new section of document
-        frag = $.fragment();
+        var frag = $.fragment();
         for (var i = 0, len = nodes.length; i < len; i++) {
-            node = nodes[i];
+            var node = nodes[i];
             frag.appendChild(node);
         }
         return frag;
@@ -283,6 +327,8 @@ cli = console;
         return $.oldValue[key] = localStorage.getValue(key);
     };
 
+    // onChange
+
     $.desync = function(key) {
         return delete $.syncing[info.namespace + key];
     };
@@ -310,7 +356,7 @@ cli = console;
         }
         return $.taskQueue(function() {
             for (key in items) {
-                if (val = localStorage.getItem(info.namespace + key)) {
+                if (val = GM_getValue(info.namespace + key)) {
                     items[key] = JSON.parse(val);
                 }
             }
@@ -323,18 +369,16 @@ cli = console;
             key = info.namespace + key;
             val = JSON.stringify(val);
             if (key in $.syncing) {
-                cli.log('key is in $.syncing');
                 localStorage.setItem(key, val);
             }
-            return localStorage.setItem(key, val);
+            return GM_setValue(key, val);
         };
         return function(keys, val) {
-            var key;
             if (typeof keys === 'string') {
                 set(keys, val);
                 return;
             }
-            for (key in keys) {
+            for (var key in keys) {
                 val = keys[key];
                 set(key, val);
             }
@@ -494,13 +538,7 @@ var System = {
 System.init();
 
 
-// common utils for modules
-var VESUtils = {
-    // TODO rearrange these utils logically
-    css: '',    // CSS for ALL of VES's modules
-    addCSS: function(css) {
-        this.css += css;
-    },
+var Utils = {
     regexes: {
         all: /^https?:\/\/(?:[\-\w\.]+\.)?voat\.co\//i,
         inbox: /^https?:\/\/(?:[\-\w\.]+\.)?voat\.co\/messaging\/([\w\.\+]+)\//i,
@@ -516,10 +554,10 @@ var VESUtils = {
     },
     isVoat: function() {
         var currURL = location.href;
-        return VESUtils.regexes.all.test(currURL);
+        return Utils.regexes.all.test(currURL);
     },
     isMatchURL: function(moduleID) {
-        if (!VESUtils.isVoat()) {
+        if (!Utils.isVoat()) {
             return false;
         }
         var module = Modules[moduleID];
@@ -530,15 +568,15 @@ var VESUtils = {
 
         var exclude = module.exclude,
             include = module.include;
-        return VESUtils.matchesPageLocation(include, exclude);
+        return Utils.matchesPageLocation(include, exclude);
     },
     matchesPageLocation: function(includes, excludes) {
         includes = typeof includes === 'undefined' ? [] : [].concat(includes);
         excludes = typeof excludes === 'undefined' ? [] : [].concat(excludes);
 
-        var excludesPageType = excludes.length && (VESUtils.isPageType.apply(VESUtils, excludes) || VESUtils.matchesPageRegex.apply(VESUtils, excludes));
+        var excludesPageType = excludes.length && (Utils.isPageType.apply(VESUtils, excludes) || Utils.matchesPageRegex.apply(VESUtils, excludes));
         if (!excludesPageType) {
-            var includesPageType = !includes.length || VESUtils.isPageType.apply(VESUtils, includes) || VESUtils.matchesPageRegex.apply(VESUtils, includes);
+            var includesPageType = !includes.length || Utils.isPageType.apply(VESUtils, includes) || Utils.matchesPageRegex.apply(VESUtils, includes);
             return includesPageType;
         }
     },
@@ -546,17 +584,17 @@ var VESUtils = {
         if (typeof this.pageTypeSaved === 'undefined') {
             var pageType = '';
             var currURL = location.href;
-            if (VESUtils.regexes.profile.test(currURL)) {
+            if (Utils.regexes.profile.test(currURL)) {
                 pageType = 'profile';
-            } else if (VESUtils.regexes.dashboard.test(currURL)) {
+            } else if (Utils.regexes.dashboard.test(currURL)) {
                 pageType = 'dashboard';
-            } else if (VESUtils.regexes.comments.test(currURL)) {
+            } else if (Utils.regexes.comments.test(currURL)) {
                 pageType = 'comments';
-            } else if (VESUtils.regexes.inbox.test(currURL)) {
+            } else if (Utils.regexes.inbox.test(currURL)) {
                 pageType = 'inbox';
-            } else if (VESUtils.regexes.submit.test(currURL)) {
+            } else if (Utils.regexes.submit.test(currURL)) {
                 pageType = 'submit';
-            } else if (VESUtils.regexes.subverse.test(currURL)) {
+            } else if (Utils.regexes.subverse.test(currURL)) {
                 pageType = 'subverse';
             } else {
                 pageType = 'linklist';
@@ -566,7 +604,7 @@ var VESUtils = {
         return this.pageTypeSaved;
     },
     isPageType: function(/*type1, type2*/) {
-        var thisPage = VESUtils.pageType();
+        var thisPage = Utils.pageType();
         return Array.prototype.slice.call(arguments).some(function(e) {
             return (e === 'all') || (e === thisPage);
         });
@@ -576,6 +614,15 @@ var VESUtils = {
         return Array.prototype.slice.call(arguments).some(function(e) {
             return e.text && e.test(href);
         });
+    },
+};
+
+// common utils for modules
+var VESUtils = {
+    // TODO rearrange these utils logically
+    css: '',    // CSS for ALL of VES's modules
+    addCSS: function(css) {
+        this.css += css;
     },
     options: { /* defined below in $.extends() */ 
         table: {},
@@ -613,7 +660,7 @@ var VESUtils = {
     },
     currentSubverse: function(check) {
         if (typeof this.curSub === 'undefined') {
-            var match = location.href.match(VESUtils.regexes.subverse);
+            var match = location.href.match(Utils.regexes.subverse);
             if (match !== null) {
                 this.curSub = match[1];
                 if (check) return (match[1].toLowerCase() === check.toLowerCase());
@@ -730,7 +777,6 @@ var VESUtils = {
     },
 };
 
-
 // shim for previous versions
 VESUtils.createElement = function(elementType, id, classname, textContent) {
     var obj = document.createElement(elementType);
@@ -780,7 +826,6 @@ $.extend(VESUtils.createElement, {
         return description;
     }
 });
-
 $.extend(VESUtils.options, {
     resetModulePrefs: function() {
         prefs = {
@@ -1099,17 +1144,14 @@ Modules.debug = {
         'all'
     ],
     isMatchURL: function() {
-        return VESUtils.isMatchURL(this.moduleID);
+        return Utils.isMatchURL(this.moduleID);
     },
     go: function() {
         if ((this.isEnabled()) && (this.isMatchURL())) {
-            // do some basic logging.
+            // basic logging
             cli.log('VES loaded: ' + Date());
             cli.log('OS: ' + System.OS);
             cli.log('browser: ' + System.browser + ' ' + System.version);
-            // console.log('loggedInUser: ' + VESUtils.loggedInUser());
-            // console.log('pageType: ' + VESUtils.pageType());
-            // console.log('subverse: ' + VESUtils.currentSubverse());
             // add a link to VES in the footer
             var separator = $.el('span', {
                 className: 'separator',
@@ -1118,7 +1160,7 @@ Modules.debug = {
                 href: 'http://github.com/travis-g/Voat-Enhancement-Suite',
                 innerHTML: 'VES'
             });
-            var footer = doc.querySelector('.footer div');
+            var footer = $('.footer div', doc);
             $.add(footer, separator);
             $.add(footer, link);
         }
@@ -1142,17 +1184,18 @@ Modules.hideChildComments = {
         return VESUtils.options.getModulePrefs(this.moduleID);
     },
     isMatchURL: function() {
-        return VESUtils.isMatchURL(this.moduleID);
+        return Utils.isMatchURL(this.moduleID);
     },
     go: function() {
         if ((this.isEnabled()) && (this.isMatchURL())) {
             // begin creating the OP's 'hide child comments' button
-            var toggleButton = document.createElement('li');
-            this.toggleAllLink = document.createElement('a');
-            this.toggleAllLink.textContent = 'hide all child comments';
+            var toggleButton = $.el('li');
+            this.toggleAllLink = $.el('a', {
+                textContent: 'hide all child comments',
+                href: '#',
+                title: 'Show only replies to original poster.',
+            });
             this.toggleAllLink.setAttribute('action', 'hide');
-            this.toggleAllLink.setAttribute('href', '#');
-            this.toggleAllLink.setAttribute('title', 'Show only replies to original poster.');
             this.toggleAllLink.addEventListener('click', function(e) {
                 e.preventDefault();
                 Modules.hideChildComments.toggleComments(this.getAttribute('action'));
@@ -1166,27 +1209,28 @@ Modules.hideChildComments = {
                     this.textContent = 'hide all child comments';
                 }
             }, true);
-            toggleButton.appendChild(this.toggleAllLink);
-            var commentMenu = document.querySelector('ul.buttons');
+            $.add(toggleButton, this.toggleAllLink);
+            var commentMenu = doc.querySelector('ul.buttons');
             if (commentMenu) {
                 // add the post's toggle
                 commentMenu.appendChild(toggleButton);
                 // get the comments of every top-level comment
                 // there's no parent element that groups every root comment's comments, so we'll need to get them all
-                var rootComments = document.querySelectorAll('div.commentarea > div.sitetable > div.thread');
+                var rootComments = doc.querySelectorAll('div.commentarea > div.sitetable > div.thread');
                 // for every root comment add a hide child elements link
                 for (var i = 0, len = rootComments.length; i < len; i++) {
-                    toggleButton = document.createElement('li');
-                    var toggleLink = document.createElement('a');
-                    toggleLink.textContent = 'hide child comments';
+                    toggleButton = $.el('li');
+                    var toggleLink = $.el('a', {
+                        textContent: 'hide child comments',
+                        href: '#',
+                        className: 'toggleChildren'
+                    });
                     toggleLink.setAttribute('action', 'hide');
-                    toggleLink.setAttribute('href', '#');
-                    toggleLink.setAttribute('class', 'toggleChildren');
                     toggleLink.addEventListener('click', function(e) {
                         e.preventDefault();
                         Modules.hideChildComments.toggleComments(this.getAttribute('action'), this);
                     }, true);
-                    toggleButton.appendChild(toggleLink);
+                    $.add(toggleButton, toggleLink);
                     //console.log('toggleButton: ' + typeof(toggleButton));
                     // get the first (if any) comment of the root
                     var childComment = rootComments[i].querySelector('.child');
@@ -1200,7 +1244,7 @@ Modules.hideChildComments = {
                     // url: /comments/12345/123456
                     var linkRE = /\/comments\/(?:\w+)\/(?:\w+)/;
                     if (! location.pathname.match(linkRE)) {
-                        VESUtils.click(this.toggleAllLink);
+                        Utils.click(this.toggleAllLink);
                     }
                 }
             }
@@ -1209,15 +1253,16 @@ Modules.hideChildComments = {
     toggleComments: function(action, obj) {
         var commentContainers;
         if (obj) { // toggle a single comment tree
-            commentContainers = $(obj).closest('.thread');
+            commentContainers = $j(obj).closest('.thread');
         } else { // toggle all comments
-            console.log('getting all comments...');
-            commentContainers = document.querySelectorAll('div.commentarea > div.sitetable > div.thread');
+            cli.log('Hiding all child comments...');
+            commentContainers = doc.querySelectorAll('div.commentarea > div.sitetable > div.thread');
         }
         for (var i = 0, len = commentContainers.length; i < len; i++) {
             // get the children under comment i
             var thisChildren = commentContainers[i].querySelectorAll('div.child');
             var numChildren = thisChildren.length;
+            // cli.log('hiding ' + numChildren + ' children');
             // get the root comment's "hide your kids" link
             var thisToggleLink = commentContainers[i].querySelector('a.toggleChildren');
             if (thisToggleLink !== null) {
@@ -1225,11 +1270,11 @@ Modules.hideChildComments = {
                 for (var x = 0, y = thisChildren.length; x < y; x++) {
                     if (action === 'hide') {
                         // Voat's already got a .hidden class, use that
-                        thisChildren[x].classList.add('hidden');
+                        $.addClass(thisChildren[x], 'hidden');
                         thisToggleLink.innerHTML = 'show child comments';
                         thisToggleLink.setAttribute('action', 'show');
                     } else {
-                        thisChildren[x].classList.remove('hidden');
+                        $.rmClass(thisChildren[x], 'hidden');
                         thisToggleLink.innerHTML = 'hide child comments';
                         thisToggleLink.setAttribute('action', 'hide');
                     }
@@ -1268,22 +1313,26 @@ Modules.singleClick = {
         'comments',
     ],
     isMatchURL: function() {
-        return VESUtils.isMatchURL(this.moduleID);
+        return Utils.isMatchURL(this.moduleID);
+    },
+    beforeLoad: function() {
+        if ((this.isEnabled()) && (this.isMatchURL())) {
+            if (VESUtils.isDarkMode()) {
+                VESUtils.addCSS('.VESSingleClick { color: #bcbcbc; font-weight: bold; }');
+                VESUtils.addCSS('.VESSingleClick:hover { text-decoration: underline; cursor: pointer; }');
+            } else {
+                VESUtils.addCSS('.VESSingleClick { color: #6a6a6a; font-weight: bold; }');
+                VESUtils.addCSS('.VESSingleClick:hover { text-decoration: underline; cursor: pointer; }');
+            }
+        }
     },
     go: function() {
         //if ((this.isMatchURL())) {    // force run
         if ((this.isEnabled()) && (this.isMatchURL())) {
             this.applyLinks();
-            if (VESUtils.isDarkMode()) {
-                VESUtils.addCSS('.VESSingleClick { color: #bcbcbc; font-weight: bold; cursor: pointer; }');
-                VESUtils.addCSS('.VESSingleClick:hover { text-decoration: underline }');
-            } else {
-                VESUtils.addCSS('.VESSingleClick { color: #6a6a6a; font-weight: bold; cursor: pointer; }');
-                VESUtils.addCSS('.VESSingleClick:hover {text-decoration: underline }');
-            }
             // watch for changes to .sitetable, then reapply
             //VESUtils.watchForElement('sitetable', Modules.singleClick.applyLinks);
-            document.body.addEventListener('DOMNodeInserted', function(event) {
+            doc.body.addEventListener('DOMNodeInserted', function(event) {
                 if ((event.target.tagName == 'DIV') && (event.target.getAttribute('class') == 'sitetable')) {
                     Modules.singleClick.applyLinks();
                 }
@@ -1291,12 +1340,12 @@ Modules.singleClick = {
         }
     },
     applyLinks: function(ele) {
-        ele = ele || document;
-        var entries = ele.querySelectorAll('.sitetable>.submission .entry'); // beware of .alert-featuredsub!
+        ele = ele || doc;
+        var entries = $$('.sitetable>.submission .entry', ele); // beware of .alert-featuredsub!
         for (var i = 0, len = entries.length; i < len; i++) {
             if ((typeof entries[i] !== 'undefined') && (!entries[i].classList.contains('lcTagged'))) {
-                entries[i].classList.add('lcTagged');
-                this.titleLA = entries[i].querySelector('A.title');
+                $.addClass(entries[i], 'lcTagged');
+                this.titleLA = $('A.title', entries[i]);
                 if (this.titleLA !== null) {
                     var thisLink = this.titleLA.href;
                     // check if it's a relative path (no http://)
@@ -1306,10 +1355,11 @@ Modules.singleClick = {
                     //console.log("thisLink -- " + thisLink);
                     var thisComments = (thisComments = entries[i].querySelector('.comments')) && thisComments.href;
                     //console.log("thisComments -- " + thisComments);
-                    var thisUL = entries[i].querySelector('ul.flat-list');
-                    var singleClickLI = document.createElement('li');
-                    var singleClickLink = document.createElement('a');
-                    singleClickLink.setAttribute('class','VESSingleClick');
+                    var thisUL = $('ul.flat-list', entries[i]);
+                    var singleClickLI = $.el('li');
+                    var singleClickLink = $.el('a', {
+                        className: 'VESSingleClick'
+                    });
                     singleClickLink.setAttribute('thisLink',thisLink);
                     singleClickLink.setAttribute('thisComments',thisComments);
                     if (thisLink != thisComments) {
@@ -1317,8 +1367,8 @@ Modules.singleClick = {
                     } else if (!(this.options.hideLEC.value)) {
                         singleClickLink.innerHTML = '[l=c]';
                     }
-                    singleClickLI.appendChild(singleClickLink);
-                    thisUL.appendChild(singleClickLI);
+                    $.add(singleClickLI, singleClickLink);
+                    $.add(thisUL, singleClickLI);
                     singleClickLink.addEventListener('click', function(e) {
                         e.preventDefault();
                         if(e.button != 2) {
@@ -1382,7 +1432,7 @@ Modules.searchHelper = {
     // include: [
     // ],
     isMatchURL: function() {
-        // return VESUtils.isMatchURL(this.moduleID);
+        // return Utils.isMatchURL(this.moduleID);
         return true;
     },
     go: function() {
@@ -1409,7 +1459,7 @@ Modules.searchHelper = {
             //         $(searchExpando).append(submitDiv);
             //     }
             // }
-            // if (this.options.toggleSearchOptions.value && VESUtils.regexes.search.test(location.href)) {
+            // if (this.options.toggleSearchOptions.value && Utils.regexes.search.test(location.href)) {
             //     VESUtils.addCSS('.searchpane-toggle-hide { float: right; margin-top: -1em } .searchpane-toggle-show { float: right; } .searchpane-toggle-show:after { content:"\u25BC"; margin-left:2px; }.searchpane-toggle-hide:after { content: "\u25B2"; margin-left: 2px; }');
             //     if (this.options.hideSearchOptions.value || location.hash === '#ves-hide-options') {
             //         $('body').addClass('ves-hide-options');
@@ -1428,7 +1478,7 @@ Modules.searchHelper = {
             //     VESUtils.addCSS('.ves-flairSearch { cursor: pointer; position: relative; } .linkflairlabel.ves-flairSearch a { position: absolute; top: 0; left: 0; right: 0; bottom: 0; }');
             //     $('.sitetable').on('mouseenter', '.title > .linkflairlabel:not(.ves-flairSearch)', function(e) {
             //         var parent = $(e.target).closest('.thing')[0],
-            //             srMatch = VESUtils.regexes.subverse.exec(parent.querySelector('.entry a.subverse')),
+            //             srMatch = Utils.regexes.subverse.exec(parent.querySelector('.entry a.subverse')),
             //             subverse = (srMatch) ? srMatch[1] : VESUtils.currentSubverse(),
             //             flair = e.target.title.replace(/\s/g, '+');
             //         if (flair && subverse) {
@@ -1442,8 +1492,8 @@ Modules.searchHelper = {
         }
     },
     searchSubverseByDefault: function() {
-        var restrictSearch = document.body.querySelector('form[action="/search"] > input#l');
-        if (restrictSearch && !document.head.querySelector('meta[content="search results"]')) { // prevent autochecking after searching with it unchecked
+        var restrictSearch = $j('form[action="/search"] > input#l');
+        if (restrictSearch && !$('meta[content="search results"]', doc.head)) { // prevent autochecking after searching with it unchecked
             restrictSearch.checked = true;
         }
     }
@@ -1464,7 +1514,7 @@ Modules.userTags = {
         return VESUtils.options.getModulePrefs(this.moduleID);
     },
     isMatchURL: function() {
-        return VESUtils.isMatchURL(this.moduleID);
+        return Utils.isMatchURL(this.moduleID);
     },
     include: [
         'all',
@@ -1582,7 +1632,7 @@ Modules.userTags = {
     VES = { // for the extension itself
         localStorageFail: false,
         init: function() {
-            VESUtils.options.resetModulePrefs();
+            pathname = location.pathname.split('/');
 
             // test for localStorage
             try {
