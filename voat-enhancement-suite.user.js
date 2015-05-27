@@ -16,7 +16,6 @@
 // @updateURL   https://github.com/travis-g/Voat-Enhancement-Suite/raw/master/voat-enhancement-suite.user.js
 // @icon
 // ==/UserScript==
-'use strict';
 
 // make sure we can still use regular jQuery, 
 // since we'll be using our own
