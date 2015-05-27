@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name        Voat Enhancement Suite
-// @version     0.0.4
+// @version     0.0.9
 // @description Suite of tools to enhance Voat's functionalities
 // @author      travis
 // @include     http://voat.co/*
@@ -22,7 +22,7 @@
 var $j = jQuery.noConflict();
 
 var info = {
-    v: '0.1.0',
+    v: '0.0.9',
     namespace: 'VES.',
     name: 'Voat Enhancement Suite',
     abbr: 'VES'
