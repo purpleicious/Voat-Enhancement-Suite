@@ -1986,28 +1986,6 @@ modules.filterVoat = {
         return false;
     }
 };
-modules.userTags = {
-    moduleID: 'userTags',
-    moduleName: 'User Tags',
-    category: 'Users',
-    descript: 'Tag Voat users in posts and comments.',
-    options: {
-
-    },
-    isEnabled: function() {
-        return VESutils.options.getModulePrefs(this.moduleID);
-    },
-    isMatchURL: function() {
-        return VESUtils.isMatchURL(this.moduleID);
-    },
-    include: [
-        'all',
-    ],
-    //exclude: [],
-    go: function() {
-
-    },
-}
 
 (function(u) {
     // while there's no options dialog
