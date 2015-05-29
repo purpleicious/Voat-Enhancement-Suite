@@ -20,7 +20,7 @@ Thank you!
 
 ## Contributing
 
-Ideas for VES are always welcome! However, before you report a bug or submit a pull request, please read the CONTRIBUTING.md file. Thank you for helping to improve VES!
+Ideas for VES are always welcome! If you have JavaScript experience (or would like some) VES can be forked and tinkered with. If you edit or create a new module submit a pull request for review.
 
 <!--[![Code Climate](https://codeclimate.com/github/travis-g/Voat-Enhancement-Suite/badges/gpa.svg)](https://codeclimate.com/github/travis-g/Voat-Enhancement-Suite)-->
 
@@ -40,6 +40,8 @@ VES should be compatible across all operating systems and most browsers. Below a
 	1. Install `Greasemonkey`,
 	2. Restart Firefox.
 2. Install VES.
+
+*Firefox may initially disable userscripts. Check under the User Scripts tab in the Add-ons Manager if VES does not appear to be loaded.*
 
 ## [Download][dl]
 
