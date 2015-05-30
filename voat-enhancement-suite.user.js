@@ -18,8 +18,9 @@
 // @icon
 // ==/UserScript==
 
-// make sure we can still use regular jQuery, 
-// since we'll be making our own
+/*  stop jQuery conflicts with our homebrew $ function.
+    jQuery aliases $ = jQuery, so prevent that ASAP.
+    (https://api.jquery.com/jquery.noconflict/)         */
 var $j = jQuery.noConflict();
 
 var info = {
@@ -27,10 +28,15 @@ var info = {
     namespace: 'VES.',
     name: 'Voat Enhancement Suite',
     abbr: 'VES'
+    // TODO add pageType up here?
 };
 
-var Config = {
-    main: {
+
+/*  TODO this should probably go away. The defaults for each module
+    are defined /with/ each module, but having the settings up here
+    makes them easier to access...?                                 */
+var Options = {
+    defaults: {
         'Modules': {
             'Debugging Tools': [true, 'Diagnostic tools for VES. Useful for submitting issues to GitHub!'],
             'Hide Child Comments': [true, 'Allows you to hide all child comments for easier reading.'],
@@ -446,7 +452,7 @@ var escape, safeJSON; // indexOf prototype
     };
 // }}}
 
-
+// register the OS, browser, &c.
 var System = {
     init: function() {
         this.browser = this.searchString(this.dataBrowser) || "unknown browser";
@@ -538,6 +544,7 @@ var System = {
 System.init();
 
 
+// common utils/functions for modules
 var Utils = {
     css: '',
     addCSS: function(css) {
@@ -578,9 +585,9 @@ var Utils = {
         includes = typeof includes === 'undefined' ? [] : [].concat(includes);
         excludes = typeof excludes === 'undefined' ? [] : [].concat(excludes);
 
-        var excludesPageType = excludes.length && (Utils.isPageType.apply(VESUtils, excludes) || Utils.matchesPageRegex.apply(VESUtils, excludes));
+        var excludesPageType = excludes.length && (Utils.isPageType.apply(Options, excludes) || Utils.matchesPageRegex.apply(Options, excludes));
         if (!excludesPageType) {
-            var includesPageType = !includes.length || Utils.isPageType.apply(VESUtils, includes) || Utils.matchesPageRegex.apply(VESUtils, includes);
+            var includesPageType = !includes.length || Utils.isPageType.apply(Options, includes) || Utils.matchesPageRegex.apply(Options, includes);
             return includesPageType;
         }
     },
@@ -619,37 +626,6 @@ var Utils = {
             return e.text && e.test(href);
         });
     },
-};
-
-// common utils for modules
-var VESUtils = {
-    // TODO rearrange these utils logically
-    options: { /* defined below in $.extends() */ 
-        table: {},
-    },
-    getOptions: function(moduleID) {
-        //console.log("getting options for " + moduleID);
-        var thisOptions = localStorage.getItem('VESOptions.' + moduleID);
-        //console.log("thisOptions = " + thisOptions);
-        var currentTime = new Date();
-        if ((thisOptions) && (thisOptions != 'undefined') && (thisOptions !== null)) {
-            storedOptions = JSON.parse(thisOptions);
-            codeOptions = Modules[moduleID].options;
-            for (var attrname in codeOptions) {
-                if (typeof(storedOptions[attrname]) == 'undefined') {
-                    storedOptions[attrname] = codeOptions[attrname];
-                }
-            }
-            Modules[moduleID].options = storedOptions;
-            localStorage.setItem('VESOptions.' + moduleID, JSON.stringify(Modules[moduleID].options));
-        } else {
-            //console.log('getOptions: setting defaults');
-            // nothing's been stored, so set defaults:
-            localStorage.setItem('VESOptions.' + moduleID, JSON.stringify(Modules[moduleID].options));
-        }
-        //console.log('getOptions: returning options for ' + moduleID);
-        return Modules[moduleID].options;
-    },
     getURLParams: function() {
         var result = {}, queryString = location.search.substring(1),
             re = /([^&=]+)=([^&]*)/g, m;
@@ -673,9 +649,6 @@ var VESUtils = {
             if (check) return (this.curSub.toLowerCase() === check.toLowerCase());
             return this.curSub;
         }
-    },
-    currentUserProfile: function() {
-        // TODO
     },
     getXYpos: function (obj) {
         var topValue= 0,leftValue= 0;
@@ -725,25 +698,6 @@ var VESUtils = {
             return argument;
         }
     },
-
-    loggedInUser: function(tryingEarly) {
-        if (typeof this.loggedInUserCached === 'undefined') {
-            var userLink = document.querySelector('#header-account > .logged-in > span.user > a');
-            if ((userLink !== null)) {
-                this.loggedInUserCached = userLink.textContent;
-            } else {
-                if (tryingEarly) {
-                    delete this.loggedInUserCached;
-                } else {
-                    this.loggedInUserCached = null;
-                }
-            }
-        }
-        return this.loggedInUserCached;
-    },
-    watchForElement: function(type, callback) {
-        // TODO
-    },
     click: function(obj, btn) {
         var evt = document.createEvent('MouseEvents');
         btn = btn || 0;
@@ -762,61 +716,16 @@ var VESUtils = {
     isDarkMode: function() {
         // check if isDarkMode has been run already
         if (typeof(this.isDarkModeCached) != 'undefined') return this.isDarkModeCached;
+        // search the VES stylesheet link URL for 'Dark'
         this.isDarkModeCached = document.getElementsByTagName('link')[1].href.indexOf('Dark') > -1;
         return this.isDarkModeCached;
     },
 };
 
-// shim for previous versions
-VESUtils.createElement = function(elementType, id, classname, textContent) {
-    var obj = document.createElement(elementType);
-    if (id) {
-        obj.setAttribute('id', id);
-    }
-    if ((typeof classname !== 'undefined') && classname && (classname !== '')) {
-        obj.setAttribute('class', classname);
-    }
-    if (textContent) {
-        if (classname && classname.split(' ').indexOf('noCtrlF') !== -1) {
-            obj.setAttribute('data-text', textContent);
-        } else { 
-            obj.textContent = textContent;
-        }
-    }
-    return obj;
-};
-$.extend(VESUtils.createElement, {
-    toggleButton: function(moduleID, fieldID, enabled, onText, offText, isTable) {
-        // TODO
-    },
-    commaDelimitedNumber: function(nStr) {
-        nStr = typeof nStr === 'string' ? nStr.replace(/[^\w]/, '') : nStr;
-        var locale = document.querySelector('html').getAttribute('lang') || 'en';
-        return new Number(nStr).toLocaleString(locale);
-    },
-    table: function(items, call, context) {
-        if (!items || !call) return;
-        // Sanitize single item into items array
-        if (!(items.length && typeof items !== 'string')) items = [items];
 
-        var description = [];
-        description.push('<table>');
-
-        for (var i = 0; i < items.length; i++) {
-            var item = call(items[i], i, items, context);
-            if (typeof item === 'string') {
-                description.push(item);
-            } else if (item.length) {
-                description = description.concat(item);
-            }
-        }
-        description.push('</table>');
-        description = description.join('\n');
-
-        return description;
-    }
-});
-$.extend(VESUtils.options, {
+// getters/setters for VES options
+$.extend(Options = {
+    settings: {},
     resetModulePrefs: function() {
         prefs = {
             'debug': true,
@@ -945,7 +854,7 @@ $.extend(VESUtils.options, {
         }
         thisOptions[optionName].value = saveOptionValue;
         // save it to the object and to VESStorage
-        VESUtils.options.saveModuleOptions(moduleID, thisOptions);
+        Options.saveModuleOptions(moduleID, thisOptions);
         return true;
     },
     saveModuleOptions: function(moduleID, newOptions) {
@@ -987,138 +896,58 @@ $.extend(VESUtils.options, {
             }
             Modules[moduleID].options = codeOptions;
             if (newOption) {
-                VESUtils.options.saveModuleOptions(moduleID);
+                Options.saveModuleOptions(moduleID);
             }
         } else {
             // nothing in localStorage, let's set the defaults...
-            VESUtils.options.saveModuleOptions(moduleID);
+            Options.saveModuleOptions(moduleID);
         }
         this.getOptionsFirstRun[moduleID] = true;
         return Modules[moduleID].options;
     },
-});
-$.extend(VESUtils.options.table, {
-    getMatchingValue: function(moduleID, optionKey, valueIdentifiers) {
-        var option = Modules[moduleID].options[optionKey];
-        var values = option.value;
-        var matchingValue;
-        if (!(option.type === 'table' && values && values.length)) return;
-
-        for (var vi = 0, vlength = values.length; vi < vlength; vi++) {
-            var value = values[vi];
-            var match = false;
-            for (var fi = 0, flength = option.fields.length; fi < flength; fi++) {
-                var field = option.fields[fi];
-                var fieldValue = value[fi];
-                var matchValue = VESUtils.firstValid(valueIdentifiers[fi], valueIdentifiers[field.name]);
-
-                if (matchValue === undefined) {
-                    continue;
-                } else if (matchValue === fieldValue) {
-                    match = true;
-                    continue;
-                } else {
-                    match = false;
-                    break;
+    /*getOptions: function(moduleID) {
+        //console.log("getting options for " + moduleID);
+        var thisOptions = localStorage.getItem('VESOptions.' + moduleID);
+        //console.log("thisOptions = " + thisOptions);
+        var currentTime = new Date();
+        if ((thisOptions) && (thisOptions != 'undefined') && (thisOptions !== null)) {
+            storedOptions = JSON.parse(thisOptions);
+            codeOptions = Modules[moduleID].options;
+            for (var attrname in codeOptions) {
+                if (typeof(storedOptions[attrname]) == 'undefined') {
+                    storedOptions[attrname] = codeOptions[attrname];
                 }
             }
-
-            if (match) {
-                matchingValue = value;
-                break;
-            }
+            Modules[moduleID].options = storedOptions;
+            localStorage.setItem('VESOptions.' + moduleID, JSON.stringify(Modules[moduleID].options));
+        } else {
+            //console.log('getOptions: setting defaults');
+            // nothing's been stored, so set defaults:
+            localStorage.setItem('VESOptions.' + moduleID, JSON.stringify(Modules[moduleID].options));
         }
-
-        return matchingValue;
-    },
-    addValue: function(moduleID, optionKey, value) {
-        var option = Modules[moduleID].options[optionKey];
-        if (option.type !== 'table') {
-            console.error('Tried to save table value to non-table option: Modules[\'' + moduleID + '\'].options.' + optionKey);
-            return;
-        }
-
-        if (!option.value) {
-            option.value = [];
-        }
-        var values = option.value;
-
-        var optionValue = [];
-        for (var i = 0, length = option.fields.length; i < length; i++) {
-            var field = option.fields[i];
-
-            var fieldValue = VESUtils.firstValid(value[i], value[field.name], field.value);
-            optionValue.push(fieldValue);
-        }
-
-        values.push(optionValue);
-        VESUtils.options.setOption(moduleID, optionKey, values);
-
-        return optionValue;
-    },
-    getMatchingValueOrAdd: function(moduleID, optionKey, valueIdentifier, hydrateValue) {
-        var matchingValue = VESUtils.options.table.getMatchingValue(moduleID, optionKey, valueIdentifier);
-        if (!matchingValue) {
-            var value = valueIdentifier;
-            if (hydrateValue) {
-                value = hydrateValue(valueIdentifier);
-            }
-
-            matchingValue = VESUtils.options.table.addValue(moduleID, optionKey, value);
-        }
-
-        return matchingValue;
-    },
-    mapValueToObject: function(moduleID, optionKey, value) {
-        var option = Modules[moduleID].options[optionKey];
-
-        var object = {};
-        for (var i = 0, length = option.fields.length; i < length; i++) {
-            var field = option.fields[i];
-
-            object[field.name] = value[i];
-        }
-
-        return object;
-    }
-});
-(function(module) {
-    var stagedOptions;
-
-    clearStagedOptions();
-
-    function stageOption(moduleID, optionName, optionValue) {
-        stagedOptions[moduleID] = stagedOptions[moduleID] || {};
-        stagedOptions[moduleID][optionName] = {
-            value: optionValue
-        };
-    }
-    function commitStagedOptions() {
-        $.each(stagedOptions, function (moduleID, module) {
-            $.each(module, function(optionName, option) {
-                VESUtils.options.setOption(moduleID, optionName, option.value);
+        //console.log('getOptions: returning options for ' + moduleID);
+        return Modules[moduleID].options;
+    }, */
+    "export": function() {
+        var settings = Options.settings;
+        return $.get(settings, function(settings) {
+            return Settings.downloadExport('Settings', {
+                version: info.version,
+                date: Date.now(),
+                settings: settings
             });
         });
-        clearStagedOptions();
+    },
+    downloadExport: function(title, data) {
+        var a = $.el('a', { // craft a link
+            download: 'VES v' + info.version + ' ' + title + '.' + data.date + '.json',
+            href: "data:application/json;base64," + (btoa(unescape(encodeURIComponent(JSON.stringify(data, null, 2)))))
+        });
+        $.add(doc.body, a);
+        a.click();  // force clicking the download link
+        return $.rm(a); // remove the download link
     }
-    function clearStagedOptions() {
-        stagedOptions = {};
-    }
-
-    function hasStagedOptions() {
-        return Object.getOwnPropertyNames(stagedOptions).length;
-    }
-
-    function getOptions(moduleID) {
-        return stagedOptions[moduleID];
-    }
-
-    module.reset = clearStagedOptions;
-    module.add = stageOption;
-    module.commit = commitStagedOptions;
-    module.isDirty = hasStagedOptions;
-    module.get = getOptions;
-})(VESUtils.options.stage = VESUtils.options.stage || {});
+});
 
 
 var Modules = {};
@@ -1180,9 +1009,9 @@ Modules.debug = {
     },
     printLocalStorage: function() {
         // this should probably go in Utils
-        cli.log('localStorage data...')
+        cli.log('localStorage data...');
         for (var key in localStorage) {
-            cli.log(key + ':')
+            cli.log(key + ':');
             cli.log(localStorage[key]);
         }
     }
@@ -1202,7 +1031,7 @@ Modules.hideChildComments = {
         'comments'
     ],
     isEnabled: function() {
-        return VESUtils.options.getModulePrefs(this.moduleID);
+        return Options.getModulePrefs(this.moduleID);
     },
     isMatchURL: function() {
         return Utils.isMatchURL(this.moduleID);
@@ -1325,7 +1154,7 @@ Modules.singleClick = {
         }
     },
     isEnabled: function() {
-        return VESUtils.options.getModulePrefs(this.moduleID);
+        return Options.getModulePrefs(this.moduleID);
     },
     include: [
         'all',
@@ -1338,7 +1167,7 @@ Modules.singleClick = {
     },
     beforeLoad: function() {
         if ((this.isEnabled()) && (this.isMatchURL())) {
-            if (VESUtils.isDarkMode()) {
+            if (Utils.isDarkMode()) {
                 Utils.addCSS('.VESSingleClick { color: #bcbcbc; font-weight: bold; }');
                 Utils.addCSS('.VESSingleClick:hover { text-decoration: underline; cursor: pointer; }');
             } else {
@@ -1352,7 +1181,7 @@ Modules.singleClick = {
         if ((this.isEnabled()) && (this.isMatchURL())) {
             this.applyLinks();
             // watch for changes to .sitetable, then reapply
-            //VESUtils.watchForElement('sitetable', Modules.singleClick.applyLinks);
+            //Utils.watchForElement('sitetable', Modules.singleClick.applyLinks);
             doc.body.addEventListener('DOMNodeInserted', function(event) {
                 if ((event.target.tagName == 'DIV') && (event.target.getAttribute('class') == 'sitetable')) {
                     Modules.singleClick.applyLinks();
@@ -1448,7 +1277,7 @@ Modules.searchHelper = {
         // }
     },
     isEnabled: function() {
-        return VESUtils.options.getModulePrefs(this.moduleID);
+        return Options.getModulePrefs(this.moduleID);
     },
     // include: [
     // ],
@@ -1500,7 +1329,7 @@ Modules.searchHelper = {
             //     $('.sitetable').on('mouseenter', '.title > .linkflairlabel:not(.ves-flairSearch)', function(e) {
             //         var parent = $(e.target).closest('.thing')[0],
             //             srMatch = Utils.regexes.subverse.exec(parent.querySelector('.entry a.subverse')),
-            //             subverse = (srMatch) ? srMatch[1] : VESUtils.currentSubverse(),
+            //             subverse = (srMatch) ? srMatch[1] : Utils.currentSubverse(),
             //             flair = e.target.title.replace(/\s/g, '+');
             //         if (flair && subverse) {
             //             var link = document.createElement('a');
@@ -1532,7 +1361,7 @@ Modules.userTags = {
         }
     },
     isEnabled: function() {
-        return VESUtils.options.getModulePrefs(this.moduleID);
+        return Options.getModulePrefs(this.moduleID);
     },
     isMatchURL: function() {
         return Utils.isMatchURL(this.moduleID);
@@ -1652,7 +1481,7 @@ Modules.voatingBooth = {
         'all'
     ],
     isEnabled: function() {
-        return VESUtils.options.getModulePrefs(this.moduleID);
+        return Options.getModulePrefs(this.moduleID);
     },
     isMatchURL: function() {
         return Utils.isMatchURL(this.moduleID);
@@ -1742,37 +1571,14 @@ Modules.voatingBooth = {
 };
 
 
-(function(u) {
-    var Conf, Settings, VES;
-
-    Conf = {}; // loaded configs
-
-    Settings = {
-        "export": function() {
-            return $.get(Conf, function(Conf) {
-                return Settings.downloadExport('Settings', {
-                    version: info.version,
-                    date: Date.now(),
-                    Conf: Conf
-                });
-            });
-        },
-        downloadExport: function(title, data) {
-            var a = $.el('a', { // craft a link
-                download: 'VES v' + info.version + ' ' + title + '.' + data.date + '.json',
-                href: "data:application/json;base64," + (btoa(unescape(encodeURIComponent(JSON.stringify(data, null, 2)))))
-            });
-            $.add(doc.body, a);
-            a.click();  // force clicking the download link
-            return $.rm(a); // remove the download link
-        }
-    };
+(function() {
+    var VES;
 
     VES = { // for the extension itself
         localStorageFail: false,
         init: function() {
             pathname = location.pathname.split('/');
-            VESUtils.options.resetModulePrefs();
+            Options.resetModulePrefs();
 
             // test for localStorage
             try {
@@ -1785,24 +1591,25 @@ Modules.voatingBooth = {
                 // TODO create a visual indicator
             }
 
-            // load Config into memory
+            /* load Config into memory
             load = function(parent, obj) {
                 if (obj instanceof Array) {
-                    Conf[parent] = obj[0];
+                    Options.settings[parent] = obj[0];
                 } else if (typeof obj === 'object') {
                     for (var key in obj) {
                         var val = obj[key];
                         load(key, val);
                     }
                 } else {
-                    Conf[parent] = obj;
+                    Options.settings[parent] = obj;
                 }
             };
-            load(null, Config);
+            load(null, Config);*/
 
-            // load previously saved configs
-            return $.get(Conf, function(items) {
-                $.extend(Conf, items);
+            // load previously saved settings,
+            // take the modules's defaults and try to load them over 
+            return $.get(Options.settings, function(items) {
+                $.extend(Options.settings, items);
                 return $.asap((function() {
                     return doc.head;
                 }), VES.loadModules);
