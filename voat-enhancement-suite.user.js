@@ -11,17 +11,18 @@
 // @exclude
 // @match
 // @grant       none
-// @require
+// @require     http://code.jquery.com/jquery-latest.js
 // @noframes
 // @downloadURL https://github.com/travis-g/Voat-Enhancement-Suite/raw/master/voat-enhancement-suite.user.js
 // @updateURL   https://github.com/travis-g/Voat-Enhancement-Suite/raw/master/voat-enhancement-suite.user.js
 // @icon
 // ==/UserScript==
+//'use strict';
 
 /*  stop jQuery conflicts with our homebrew $ function.
     jQuery aliases $ = jQuery, so prevent that ASAP.
     (https://api.jquery.com/jquery.noconflict/)         */
-var $j = jQuery.noConflict();
+var j = jQuery.noConflict();
 
 var info = {
     v: '0.0.9',
@@ -62,7 +63,7 @@ var Options = {
 // @modified        2010 Steve Sobel - added some missing gm_* functions
 // @license        cc-by-3.0; http://creativecommons.org/licenses/by/3.0/
 if ((typeof GM_deleteValue == 'undefined') || (typeof GM_addStyle == 'undefined')) {
-    GM_addStyle = function(css) {
+    var GM_addStyle = function(css) {
         var style = document.createElement('style');
         style.textContent = css;
         var head = document.getElementsByTagName('head')[0];
@@ -71,11 +72,11 @@ if ((typeof GM_deleteValue == 'undefined') || (typeof GM_addStyle == 'undefined'
         }
     };
 
-    GM_deleteValue = function(name) {
+    var GM_deleteValue = function(name) {
         localStorage.removeItem(name);
     };
 
-    GM_getValue = function(name, defaultValue) {
+    var GM_getValue = function(name, defaultValue) {
         var value = localStorage.getItem(name);
         if (!value)
             return defaultValue;
@@ -91,16 +92,16 @@ if ((typeof GM_deleteValue == 'undefined') || (typeof GM_addStyle == 'undefined'
         }
     };
 
-    GM_log = function(message) {
+    var GM_log = function(message) {
         console.log(message);
     };
 
-    GM_setValue = function(name, value) {
+    var GM_setValue = function(name, value) {
         value = (typeof value)[0] + value;
         localStorage.setItem(name, value);
     };
 
-    GM_openInTab = function(url) {
+    var GM_openInTab = function(url) {
         window.open(url);
     };
     // GM_xmlhttpRequest
@@ -732,7 +733,7 @@ $.extend(Options = {
             'hideChildComments': true,
             'voatingNeverEnds': false,
             'singleClick': true,
-            'searchHelper': true,
+            'searchHelper': false,
             'filterVoat': false,
             'userTags': false,
             'voatingBooth': false
@@ -783,7 +784,7 @@ $.extend(Options = {
     },
     setModulePrefs: function(prefs) {
         if (prefs !== null) {
-            localStorage.setItem('VES.modulePrefs', JSON.stringify(prefs));
+            localStorage.setItem(info.namespace + 'modulePrefs', JSON.stringify(prefs));
             return prefs;
         } else {
             alert('error - no prefs specified');
@@ -1103,7 +1104,7 @@ Modules.hideChildComments = {
     toggleComments: function(action, obj) {
         var commentContainers;
         if (obj) { // toggle a single comment tree
-            commentContainers = $j(obj).closest('.thread');
+            commentContainers = j(obj).closest('.thread');
         } else { // toggle all comments
             cli.log('Hiding all child comments...');
             commentContainers = doc.querySelectorAll('div.commentarea > div.sitetable > div.thread');
@@ -1287,7 +1288,7 @@ Modules.searchHelper = {
     },
     go: function() {
         if ((this.isEnabled()) && (this.isMatchURL())) {
-            var searchExpando;
+            //var searchExpando;
             if (this.options.searchSubverseByDefault.value) {
                 this.searchSubverseByDefault();
             }
@@ -1342,7 +1343,7 @@ Modules.searchHelper = {
         }
     },
     searchSubverseByDefault: function() {
-        var restrictSearch = $j('form[action="/search"] > input#l');
+        var restrictSearch = j('form[action="/search"] > input#l');
         if (restrictSearch && !$('meta[content="search results"]', doc.head)) { // prevent autochecking after searching with it unchecked
             restrictSearch.checked = true;
         }
@@ -1530,7 +1531,7 @@ Modules.voatingBooth = {
         spacer.id = 'VESPinnedHeaderSpacer';
 
         var css = '#sr-header-area { left: 0; right: 0 }';
-        spacer.style.height = $j('#header').outerHeight() + 'px';
+        spacer.style.height = $('#header').outerHeight() + 'px';
 
         $.before(header.nextSibling, spacer);
 
@@ -1632,7 +1633,7 @@ Modules.voatingBooth = {
                         Modules[module].go();
                     } catch (e) {
                         cli.log('\"' + Modules[module].moduleName + '\" initialization crashed!');
-                        cli.error(e.name + ': ' + e.message);
+                        cli.log(e.name + ': ' + e.message);
                     }
                 }
             }
