@@ -33,31 +33,6 @@ var info = {
 };
 
 
-/*  TODO this should probably go away. The defaults for each module
-    are defined /with/ each module, but having the settings up here
-    makes them easier to access...?                                 */
-var Options = {
-    defaults: {
-        'Modules': {
-            'Debugging Tools': [true, 'Diagnostic tools for VES. Useful for submitting issues to GitHub!'],
-            'Hide Child Comments': [true, 'Allows you to hide all child comments for easier reading.'],
-            'Single Click': [true, 'Adds an [l+c] link that opens both the link and the comments page in new tabs.'],
-            'Search Helper': [true, 'Makes searching through Voat a bit easier.'],
-            'filterVoat': [false, 'Filter out links by keyword, domain (use User Tagger to ignore by user) or subverse (for /v/all).'],
-            'Voating Never Ends': [false, 'Load the next pages of Voat automatically.'],
-            'User Tags': [true, 'Tag Voat users in posts and comments.'],
-        },
-        'hideChildComments': {
-            'Auto Hide Child Comments': [true, 'Automatically hide all child comments on page load.'],
-        },
-        'userTags': {
-            'Hard Ignore': [false, 'When on, the ignored user\'s entire post is hidden, not just the title.'],
-            'Dim Ignored Content': [false, 'Reduce the opacity of ignored user\'s content.'],
-        }
-    },
-};
-
-
 // GreaseMonkey API compatibility for non-GM browsers (Chrome, Safari, Firefox)
 // @copyright      2009, 2010 James Campos
 // @modified        2010 Steve Sobel - added some missing gm_* functions
@@ -545,6 +520,79 @@ var System = {
 System.init();
 
 
+// keycodes
+var KEY = {
+    BACKSPACE: 8,
+    TAB: 9,
+    ENTER: 13,
+    ESCAPE: 27,
+    SPACE: 32,
+    PAGE_UP: 33,
+    PAGE_DOWN: 34,
+    END: 35,
+    HOME: 36,
+    LEFT: 37,
+    UP: 38,
+    RIGHT: 39,
+    DOWN: 40,
+    NUMPAD_ENTER: 108,
+    COMMA: 188
+};
+
+
+var Storage = {};
+Storage.getItem = function(key) {
+    // if key exists in Storage return that value
+    if (typeof(Storage[key]) !== 'undefined') return Storage[key];
+    // if key isn't in Storage ask Greasemonkey for it
+    Storage[key] = GM_getValue(key);
+    // if it wasn't defined in Greasemonkey return null
+    if (typeof(Storage[key]) === 'undefined') return null;
+    // or return what was in Greasemonkey
+    return GM_getValue(key);
+};
+Storage.setItem = function(key, value) {
+    // cache the value in Storage but also set it in localStorage
+    if (typeof(value) != 'undefined') {
+        if (typeof(value) === 'number') {
+            value = value.toString();
+        }
+        Storage[key] = value;
+        setTimeout(function() {
+            GM_setValue(key, value);
+        }, 0);
+    }
+    return true;
+};
+Storage.removeItem = function(key) {
+    // delete it from the cache and localStorage
+    delete Storage[key];
+    GM_deleteValue(key);
+    return true;
+};
+Storage.load = function() {
+    if (typeof(unsafeWindow) !== 'undefined') localStorage = unsafeWindow.localStorage;
+    if (GM_getValue('importedStorage') != 'true') {
+        for (var i = 0, len = localStorage.length; i < len; i++) {
+            var val = localStorage.getItem(localStorage.key(i));
+            if (typeof(value) != 'undefined') {
+                if ((typeof(value) == 'number') && (value > 2147483647)) {
+                    value = value.toString();
+                }
+                if (localStorage.key(i)) {
+                    GM_setValue(localStorage.key(i), value);
+                }
+            }
+        }
+        GM_setValue('importedStorage', 'true');
+    }
+};
+
+
+// VES options
+var Options = {};
+
+
 // common utils/functions for modules
 var Utils = {
     css: '',
@@ -726,7 +774,6 @@ var Utils = {
 
 // getters/setters for VES options
 $.extend(Options = {
-    settings: {},
     resetModulePrefs: function() {
         prefs = {
             'debug': true,
@@ -930,7 +977,7 @@ $.extend(Options = {
         return Modules[moduleID].options;
     }, */
     "export": function() {
-        var settings = Options.settings;
+        var settings = Storage;
         return $.get(settings, function(settings) {
             return Settings.downloadExport('Settings', {
                 version: info.version,
@@ -1575,22 +1622,12 @@ Modules.voatingBooth = {
 (function() {
     var VES;
 
+    Storage.load();
+
     VES = { // for the extension itself
         localStorageFail: false,
         init: function() {
-            pathname = location.pathname.split('/');
             Options.resetModulePrefs();
-
-            // test for localStorage
-            try {
-                $.set('test', test);
-            } catch(e) {
-                localStorageFail = true;
-            }
-            if (localStorageFail) {
-                // cli.error('Storage failed or is inaccessible. Are you in a private browsing session?');
-                // TODO create a visual indicator
-            }
 
             /* load Config into memory
             load = function(parent, obj) {
