@@ -269,9 +269,32 @@ var $, $$;
             el.addEventListener(event, handler, false);
         }
     };
-    // $.off
+    
+    // remove an event and handler from an element
+    $.off = function(el, events, handler) {
+        var ref = events.split(' ');
+        for (int i = 0, len = ref.length; i < len; i++) {
+            var event = ref[i];
+            el.removeEventListener(event, handler, false);
+        }
+    };
+
     // $.one
-    // $.event
+    
+    // create a custom event type
+    $.event = function(event, detail, root) {
+        // OR function(event, detail), if root is document
+        if (root == null) {
+            root = doc;
+        }
+        if ((detail !== null) && (typeof cloneInto === 'function') {
+            detail = cloneInto(detail, doc.defaultView);
+        }
+        return root.dispatchEvent(new CustomEvent(event, {
+            bubbles: true,
+            detail: detail
+        }));
+    };
 
     $.open = GM_openInTab;
 
@@ -284,7 +307,7 @@ var $, $$;
         var that = null;
         var exec = function() {
             lastCall = Date.now();
-            return func.apply(this, args);
+            return func.apply(that, args);
         };
         return function() {
             args = arguments;
@@ -298,6 +321,7 @@ var $, $$;
         };
     };
 
+    // create a queue of tasks to execute when possible
     $.taskQueue = (function() {
         var queue = [];
         // function to execute the next task in queue
@@ -1719,25 +1743,12 @@ Modules.voatingBooth = {
         init: function() {
             Options.resetModulePrefs();
 
-            /* load Config into memory
-            load = function(parent, obj) {
-                if (obj instanceof Array) {
-                    Options.settings[parent] = obj[0];
-                } else if (typeof obj === 'object') {
-                    for (var key in obj) {
-                        var val = obj[key];
-                        load(key, val);
-                    }
-                } else {
-                    Options.settings[parent] = obj;
-                }
-            };
-            load(null, Config);*/
+            // TODO load the defaults into memory
+            // getAllModulePrefs()?
 
-            // load previously saved settings,
-            // take the modules's defaults and try to load them over 
-            return $.get(Options.settings, function(items) {
-                $.extend(Options.settings, items);
+            // load previously saved settings over the defaults
+            return $.get(Settings, function(items) {
+                $.extend(Settings, items);
                 return $.asap((function() {
                     return doc.head;
                 }), VES.loadModules);
