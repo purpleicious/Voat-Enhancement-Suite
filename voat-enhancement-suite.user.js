@@ -97,14 +97,14 @@ var __slice = [].slice,
 // make some sorta-jQuery functions, http://api.jquery.com/
 var $, $$;
 // {{{ 
-    // querySelector
+    // querySelector on root (or document.body)
     $ = function(selector, root) {
         if (root === null) {
             root = doc.body;
         }
         return root.querySelector(selector);
     };
-    // querySelectorAll
+    // querySelectorAll on root (or document.body)
     $$ = function(selector, root) {
         if (root === null) {
             root = doc.body;
@@ -121,22 +121,29 @@ var $, $$;
         }
     };
 
+    // alias for getElementById(id)
     $.id = function(id) {
         return doc.getElementById(id);
     };
 
+    // once page is loaded execute a function
     $.ready = function(func) {
+        // if the document is ready queue the task
         if (doc.readyState !== 'loading') {
-            $.queueTask(func);
+            $.taskQueue(func);
             return;
         }
+        // create a callback to unbind the event from the document and
+        // execute the function
         var callback = function() {
             $.off(doc, 'DOMContentLoaded', callback);
             return func();
         };
+        // set an event to execute the callback function once the page is loaded
         return $.on(doc, 'DOMContentLoaded', callback);
     };
 
+    // add a list of properties to an object
     $.extend = function(obj, props) {
         for (var key in props) {
             val = props[key];
@@ -144,15 +151,19 @@ var $, $$;
         }
     };
 
+    // wait until test can be done and then perform a callback
     $.asap = function(test, callback) {
-        if (test()) {   // as soon as test is doable
-            return callback();  // perform the callback op
+        // if test CAN be done perform the callback
+        if (test()) {
+            return callback();
         } else {
             // if you can't do test, wait and try again
             return setTimeout($.asap, 25, test, callback);
         }
     };
 
+    // create a <style> element with given CSS and an id,
+    // and append it to <head> as soon as possible.
     $.addStyle = function(css, id) {
         var style = $.el('style', {
             id: id,
@@ -166,6 +177,7 @@ var $, $$;
         return style;
     };
 
+    // add a class or list of classes to an element
     $.addClass = function(/*element, class1, class2...*/) {
         var el = arguments[0], classnames = 2 <= arguments.length ? __slice.call(arguments, 1) : [];
         for (var i = 0, len = classnames.length; i < len; i++) {
@@ -174,6 +186,7 @@ var $, $$;
         }
     };
 
+    // remove a class or list of classes from an element
     $.rmClass = function(/*element, class1, class2...*/) {
         var el = arguments[0], classnames = 2 <= arguments.length ? __slice.call(arguments, 1) : [];
         for (var i = 0, len = classnames.length; i < len; i++) {
@@ -182,23 +195,28 @@ var $, $$;
         }
     };
 
+    // toggle a class on an element
     $.toggleClass = function(el, classname) {
         return el.classList.toggle(classname);
     };
 
+    // return true if an element has a given class
     $.hasClass = function(el, classname) {
         return __indexOf.call(el.classList, classname) >= 0;
     };
 
+    // remove a single element
     $.rm = function(el) {
         return el.remove();
     };
 
+    // remove everything inside a root element
     $.rmAll = function(root) {
         root.textContent = null;
         return root.textContent;
     };
 
+    // make a new piece of document to be added
     $.fragment = function() {
         return doc.createDocumentFragment();
     };
@@ -207,7 +225,8 @@ var $, $$;
         if (!(nodes instanceof Array)) {
             return nodes;
         }
-        // if theres a bunch, create a new section of document
+        // if theres a bunch, create a new section of document,
+        // then add all of the nodes as sibilings
         var frag = $.fragment();
         for (var i = 0, len = nodes.length; i < len; i++) {
             var node = nodes[i];
@@ -215,27 +234,34 @@ var $, $$;
         }
         return frag;
     };
+    // add an element after its parent's existing children
     $.add = function(parent, el) {
         return parent.appendChild($.nodes(el));
     };
+    // add an element to a parent as a firstChild
     $.prepend = function(parent, el) {
         return parent.insertBefore($.nodes(el), parent.firstChild);
     };
+    // add an element after another
     $.after = function(root, el) {
         return root.parentNode.insertBefore($.nodes(el), root.nextSibiling);
     };
+    // insert an element before another
     $.before = function(root, el) {
         return root.parentNode.insertBefore($.nodes(el), root);
     };
+
+    // create an element and set it's properties using JSON data
     $.el = function(tag, props) {
-        var el;
-        el = doc.createElement(tag);
+        var el = doc.createElement(tag);
+        // if a JSON of properties is passed in, apply them
         if (props) {
             $.extend(el, props);
         }
         return el;
     };
 
+    // add an event and a handler to an element
     $.on = function(el, events, handler) {
         var ref = events.split(' ');
         for (var i = 0, len = ref.length; i < len; i++) {
@@ -249,6 +275,8 @@ var $, $$;
 
     $.open = GM_openInTab;
 
+    // limit the rate the a function can fire at, so 
+    // browser performance is maintained
     $.debounce = function(wait, func) {
         var args = null;
         var lastCall = 0;
@@ -261,6 +289,7 @@ var $, $$;
         return function() {
             args = arguments;
             that = this;
+            // if enough time has passed exec the function
             if (lastCall < Date.now() - wait) {
                 return exec();
             }
@@ -271,71 +300,125 @@ var $, $$;
 
     $.taskQueue = (function() {
         var queue = [];
+        // function to execute the next task in queue
         var execTask = function() {
-            var args, func, task;
-            task = queue.shift();
-            func = task[0];
-            args = Array.prototype.slice.call(task, 1);
+            var task = queue.shift(); // pop the next task!
+            //  task = [function, arg1, arg2, ...]
+
+            // read the task's base function
+            var func = task[0];
+            // get the task's function args (everything starting at task[1])
+            var args = Array.prototype.slice.call(task, 1);
+
+            // do the task
             return func.apply(func, args);
         };
-        if (window.MessageChannel) {
+
+        // window.MessageChannel is for intra- and inter-window communication.
+        // http://www.w3.org/TR/webmessaging/
+        if (window.MessageChannel) { // check if MessageChannels are supported
+            // create a new message channel
             var taskChannel = new MessageChannel();
+            // execute the task when port1 receives a message
             taskChannel.port1.onmessage = execTask;
             return function() {
+                // push the function into the queue
                 queue.push(arguments);
+                // send a message to port1 to trigger the function
                 return taskChannel.port2.postMessage(null);
             };
         } else {
             return function() {
+                // if MessageChannels aren't supported then add the function
+                // to the queue and exec
                 queue.push(arguments);
                 return setTimeout(execTask, 0);
             };
         }
     })();
 
+    // create a JSON from key/val pair
     $.item = function(key, val) {
         var item = {};
         item[key] = val;
         return item;
     };
 
-    $.syncing = {}; // sync queue
+    $.syncing = {}; // list of functions to keep values synchronized
 
-    $.oldValue = {};
+    $.oldValue = {}; // backups of old values
 
+    // start dynamically updating a key by running a callback
     $.sync = function(key, callback) {
         key = info.namespace + key;
         $.syncing[key] = callback;
+        // back up the previous key value from localStorage
         return $.oldValue[key] = localStorage.getItem(key);
     };
 
-    // onChange
+    // create an event to synchronize settings changes
+    (function() {
+        var onChange = function(key) {
+            var callback;
+            if (!(callback = $.syncing[key])) {
+                return;
+            }
+            var newValue = GM_getValue(key);
+            if (newValue === $.oldValue[key]) {
+                return;
+            }
+            if (newValue != null) {
+                $.oldValue[key] = newValue;
+                return callback(JSON.parse(newValue), key);
+            } else {
+                delete $.oldValue[key];
+                return callback(void 0, key);
+            }
+        };
+        $.on(window, 'storage', function(arg) {
+            var key = arg.key;
+            return onChange(key);
+        });
+        return $.forceSync = function(key) {
+            return onChange(info.namespace + key);
+        };
+    })();
 
+    // stop syncing a value
     $.desync = function(key) {
         return delete $.syncing[info.namespace + key];
     };
 
+    // remove data from localStorage
     $["delete"] = function(keys) {
-        var key, _i, _len;
-        if (!(keys instanceof Array)) {
+        if (!(keys instanceof Array)) { // we'll want an array
             keys = [keys];
         }
-        for (_i = 0, _len = keys.length; _i < _len; _i++) {
-            key = keys[_i];
-            key = info.namespace + key;
+        // delete each key:
+        for (var i = 0, len = keys.length; i < len; i++) {
+            var key = keys[i];
+            key = info.namespace + key; // key names are prefixed with 'VES.'
+            // purge the key's data
             localStorage.removeItem(key);
             GM_deleteValue(key);
         }
     };
 
+    // get values out of localStorage, and perform an
+    // action using them with the callback. 'items' (whatever matches 'key')
+    // can be used as the argument in the callback.
     $.get = function(key, val, callback) {
+    //   OR function(key, callback), if val isn't specified
         var items;
+        // if val is specified then we're looking for the specific instance of
+        // 'key' with value 'val'
         if (typeof callback === 'function') {
             items = $.item(key, val);
-        } else {
+        } else { // if val isn't specified get every entry with the key
             items = key;
             callback = val;
         }
+        // add a task to the queue with the callback we want to perform
         return $.taskQueue(function() {
             for (key in items) {
                 if (val = localStorage.getItem(info.namespace + key)) {
@@ -346,6 +429,7 @@ var $, $$;
         });
     };
 
+    // set values to localStorage.
     $.set = (function() {
         var set = function(key, val) {
             key = info.namespace + key;
@@ -369,16 +453,22 @@ var $, $$;
 
     // $.clear
 
+    // remove a single value value from an array
     $.remove = function(array, val) {
         var i = array.indexOf(val);
+        // if the value isn't found return false
         if (i === -1) return false;
-        array.splice(i, 1);
+
+        // remove the value (which was found at array[i])
+        array.splice(i, 1); // array.splice(indexToRemove, removeHowMany)
         return true;
     };
 // }}}
 
-var escape, safeJSON; // indexOf prototype
-// {{{ 
+var escape, safeJSON; // Array.prototype.indexOf
+// {{{
+    // check for the index of val, and if i 
+    // start checking at index i
     Array.prototype.indexOf = function(val, i) {
         i || (i = 0);
         var length = this.length;
@@ -428,7 +518,7 @@ var escape, safeJSON; // indexOf prototype
     };
 // }}}
 
-// register the OS, browser, &c.
+// register the OS, browser, and so on.
 var System = {
     init: function() {
         this.browser = this.searchString(this.dataBrowser) || "unknown browser";
