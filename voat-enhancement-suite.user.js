@@ -391,7 +391,7 @@ var $, $$;
             if (newValue === $.oldValue[key]) {
                 return;
             }
-            if (newValue != null) {
+            if (newValue !== null) {
                 $.oldValue[key] = newValue;
                 return callback(JSON.parse(newValue), key);
             } else {
@@ -445,7 +445,8 @@ var $, $$;
         // add a task to the queue with the callback we want to perform
         return $.taskQueue(function() {
             for (key in items) {
-                if (val = localStorage.getItem(info.namespace + key)) {
+                val = localStorage.getItem(info.namespace + key);
+                if (val) {
                     items[key] = JSON.parse(val);
                 }
             }
@@ -546,9 +547,7 @@ var escape, safeJSON; // Array.prototype.indexOf
 var System = {
     init: function() {
         this.browser = this.searchString(this.dataBrowser) || "unknown browser";
-        this.version = this.searchVersion(navigator.userAgent)
-            || this.searchVersion(navigator.appVersion)
-            || "unknown version";
+        this.version = this.searchVersion(navigator.userAgent) || this.searchVersion(navigator.appVersion) || "unknown version";
         this.OS = this.searchString(this.dataOS) || "unknown OS";
     },
     searchString: function (data) {
@@ -791,8 +790,8 @@ var Utils = {
     },
     getURLParams: function() {
         var result = {}, queryString = location.search.substring(1),
-            re = /([^&=]+)=([^&]*)/g, m;
-        while (m = re.exec(queryString)) {
+            re = /([^&=]+)=([^&]*)/g, m = re.exec(queryString);
+        while (m) {
             result[decodeURLComponent(m[1])] = decodeURLComponent(m[2]);
         }
         return result;
