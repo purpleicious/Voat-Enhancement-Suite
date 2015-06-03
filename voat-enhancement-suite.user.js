@@ -375,14 +375,12 @@ var $, $$;
 
     $.syncing = {}; // list of functions to keep values synchronized
 
-    $.oldValue = {}; // backups of old values
-
     // create a callback to keep a value updated
     $.sync = function(key, callback) {
         key = info.namespace + key;
         $.syncing[key] = callback;
         // back up the previous key value from localStorage
-        return $.oldValue[key] = localStorage.getItem(key);
+        return Storage[key] = localStorage.getItem(key);
     };
 
     // create an event to synchronize settings changes
@@ -395,15 +393,15 @@ var $, $$;
             }
             // get the new value, and if it's the same don't bother with changes
             var newValue = GM_getValue(key);
-            if (newValue === $.oldValue[key]) {
+            if (newValue === Storage[key]) {
                 return;
             }
             // if we didn't delete the value record the change
             if (newValue !== null) {
-                $.oldValue[key] = newValue;
+                Storage[key] = newValue;
                 return callback(JSON.parse(newValue), key);
             } else {
-                delete $.oldValue[key];
+                delete Storage[key];
                 return callback(void 0, key);
             }
         };
@@ -680,38 +678,15 @@ var KEY = {
 
 
 var Storage = {};
-Storage.getItem = function(key) {
-    // if key exists in Storage return that value
-    if (typeof(Storage[key]) !== 'undefined') return Storage[key];
-    // if key isn't in Storage ask Greasemonkey for it
-    Storage[key] = GM_getValue(key);
-    // if it wasn't defined in Greasemonkey return null
-    if (typeof(Storage[key]) === 'undefined') return null;
-    // or return what was in Greasemonkey
-    return GM_getValue(key);
-};
-Storage.setItem = function(key, value) {
-    // cache the value in Storage but also set it in localStorage
-    if (typeof(value) != 'undefined') {
-        if (typeof(value) === 'number') {
-            value = value.toString();
-        }
-        Storage[key] = value;
-        setTimeout(function() {
-            GM_setValue(key, value);
-        }, 0);
-    }
-    return true;
-};
-Storage.removeItem = function(key) {
-    // delete it from the cache and localStorage
-    delete Storage[key];
-    GM_deleteValue(key);
-    return true;
-};
-Storage.init = function() {
+function setUpStorage() {
+    /**
+        This init function is for defining anything browser-specific needed for
+        manipulating localStorage or -monkey storage.
+    **/
     if (typeof(unsafeWindow) !== 'undefined') localStorage = unsafeWindow.localStorage;
-    
+    if (!(System.storage)) {
+        cli.error('Browser storage is unreachable. Are you in a private session?');
+    }
 };
 
 
@@ -1757,7 +1732,7 @@ Modules.voatingBooth = {
         THEN we can start preloading the modules and running them.
     **/
 
-    Storage.init();
+    setUpStorage();
 
     VES = { // for the extension itself
         init: function() {
