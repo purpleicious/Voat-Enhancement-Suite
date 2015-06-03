@@ -709,27 +709,10 @@ Storage.removeItem = function(key) {
     GM_deleteValue(key);
     return true;
 };
-Storage.load = function() {
+Storage.init = function() {
     if (typeof(unsafeWindow) !== 'undefined') localStorage = unsafeWindow.localStorage;
-    if (GM_getValue('importedStorage') != 'true') {
-        for (var i = 0, len = localStorage.length; i < len; i++) {
-            var val = localStorage.getItem(localStorage.key(i));
-            if (typeof(value) != 'undefined') {
-                if ((typeof(value) == 'number') && (value > 2147483647)) {
-                    value = value.toString();
-                }
-                if (localStorage.key(i)) {
-                    GM_setValue(localStorage.key(i), value);
-                }
-            }
-        }
-        GM_setValue('importedStorage', 'true');
-    }
+    
 };
-
-
-// VES options
-var Options = {};
 
 
 // common utils/functions for modules
@@ -773,9 +756,9 @@ var Utils = {
         includes = typeof includes === 'undefined' ? [] : [].concat(includes);
         excludes = typeof excludes === 'undefined' ? [] : [].concat(excludes);
 
-        var excludesPageType = excludes.length && (Utils.isPageType.apply(Options, excludes) || Utils.matchesPageRegex.apply(Options, excludes));
+        var excludesPageType = excludes.length && (Utils.isPageType.apply(Utils, excludes) || Utils.matchesPageRegex.apply(Utils, excludes));
         if (!excludesPageType) {
-            var includesPageType = !includes.length || Utils.isPageType.apply(Options, includes) || Utils.matchesPageRegex.apply(Options, includes);
+            var includesPageType = !includes.length || Utils.isPageType.apply(Utils, includes) || Utils.matchesPageRegex.apply(Utils, includes);
             return includesPageType;
         }
     },
@@ -910,9 +893,8 @@ var Utils = {
     },
 };
 
-
 // getters/setters for VES options
-$.extend(Options = {
+$.extend(Utils, {
     resetModulePrefs: function() {
         prefs = {
             'debug': true,
@@ -1041,7 +1023,7 @@ $.extend(Options = {
         }
         thisOptions[optionName].value = saveOptionValue;
         // save it to the object and to VESStorage
-        Options.saveModuleOptions(moduleID, thisOptions);
+        Utils.saveModuleOptions(moduleID, thisOptions);
         return true;
     },
     saveModuleOptions: function(moduleID, newOptions) {
@@ -1083,11 +1065,11 @@ $.extend(Options = {
             }
             Modules[moduleID].options = codeOptions;
             if (newOption) {
-                Options.saveModuleOptions(moduleID);
+                Utils.saveModuleOptions(moduleID);
             }
         } else {
             // nothing in localStorage, let's set the defaults...
-            Options.saveModuleOptions(moduleID);
+            Utils.saveModuleOptions(moduleID);
         }
         this.getOptionsFirstRun[moduleID] = true;
         return Modules[moduleID].options;
@@ -1223,7 +1205,7 @@ Modules.hideChildComments = {
         'comments'
     ],
     isEnabled: function() {
-        return Options.getModulePrefs(this.moduleID);
+        return Utils.getModulePrefs(this.moduleID);
     },
     isMatchURL: function() {
         return Utils.isMatchURL(this.moduleID);
@@ -1346,7 +1328,7 @@ Modules.singleClick = {
         }
     },
     isEnabled: function() {
-        return Options.getModulePrefs(this.moduleID);
+        return Utils.getModulePrefs(this.moduleID);
     },
     include: [
         'all',
@@ -1469,7 +1451,7 @@ Modules.searchHelper = {
         // }
     },
     isEnabled: function() {
-        return Options.getModulePrefs(this.moduleID);
+        return Utils.getModulePrefs(this.moduleID);
     },
     // include: [
     // ],
@@ -1553,7 +1535,7 @@ Modules.userTags = {
         }
     },
     isEnabled: function() {
-        return Options.getModulePrefs(this.moduleID);
+        return Utils.getModulePrefs(this.moduleID);
     },
     isMatchURL: function() {
         return Utils.isMatchURL(this.moduleID);
@@ -1673,7 +1655,7 @@ Modules.voatingBooth = {
         'all'
     ],
     isEnabled: function() {
-        return Options.getModulePrefs(this.moduleID);
+        return Utils.getModulePrefs(this.moduleID);
     },
     isMatchURL: function() {
         return Utils.isMatchURL(this.moduleID);
@@ -1766,12 +1748,20 @@ Modules.voatingBooth = {
 (function() {
     var VES;
 
-    Storage.load();
+    /**
+        VES needs to go through and first load ALL of the modules' defaults in order
+        to make sure that no new options (after an update) are left out of storage.
+        This will also account for when VES is run for the first time.
+        After all the defaults are loaded, $.extend the loaded defaults and replace 
+        all the values with whatever the user's settings are (from localStorage). 
+        THEN we can start preloading the modules and running them.
+    **/
+
+    Storage.init();
 
     VES = { // for the extension itself
-        localStorageFail: false,
         init: function() {
-            Options.resetModulePrefs();
+            Utils.resetModulePrefs();
 
             // TODO load the defaults into memory
             // getAllModulePrefs()?
