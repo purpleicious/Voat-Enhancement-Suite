@@ -273,7 +273,7 @@ var $, $$;
     // remove an event and handler from an element
     $.off = function(el, events, handler) {
         var ref = events.split(' ');
-        for (int i = 0, len = ref.length; i < len; i++) {
+        for (var i = 0, len = ref.length; i < len; i++) {
             var event = ref[i];
             el.removeEventListener(event, handler, false);
         }
@@ -287,7 +287,7 @@ var $, $$;
         if (root == null) {
             root = doc;
         }
-        if ((detail !== null) && (typeof cloneInto === 'function') {
+        if ((detail !== null) && typeof cloneInto === 'function') {
             detail = cloneInto(detail, doc.defaultView);
         }
         return root.dispatchEvent(new CustomEvent(event, {
@@ -1745,9 +1745,12 @@ Modules.voatingBooth = {
             // TODO load the defaults into memory
             // getAllModulePrefs()?
 
-            // load previously saved settings over the defaults
-            return $.get(Settings, function(items) {
-                $.extend(Settings, items);
+            // load a user's saved settings
+            return $.get(Storage, function(items) { // get saved Settings
+                // extend and replace the loaded defaults
+                $.extend(Storage, items);
+
+                // start loading the modules once <head> can be found
                 return $.asap((function() {
                     return doc.head;
                 }), VES.loadModules);
@@ -1768,7 +1771,7 @@ Modules.voatingBooth = {
                 if (typeof Modules[module] === 'object') {
                     try {
                         Modules[module].go();
-                    } catch (e) {
+                    } catch (e) { // if one module breaks don't kill everything
                         cli.log('\"' + Modules[module].moduleName + '\" initialization crashed!');
                         cli.log(e.name + ': ' + e.message);
                     }
