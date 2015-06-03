@@ -10,11 +10,16 @@
 // @include     https://*.voat.co/*
 // @exclude
 // @match
-// @grant       none
+// @grant       GM_getValue
+// @grant       GM_setValue
+// @grant       GM_deleteValue
+// @grant       GM_listValues
+// @grant       GM_openInTab
+// @run-at      document-start
 // @require     http://code.jquery.com/jquery-latest.js
 // @noframes
+// @updateURL   https://github.com/travis-g/Voat-Enhancement-Suite/raw/master/voat-enhancement-suite.meta.js
 // @downloadURL https://github.com/travis-g/Voat-Enhancement-Suite/raw/master/voat-enhancement-suite.user.js
-// @updateURL   https://github.com/travis-g/Voat-Enhancement-Suite/raw/master/voat-enhancement-suite.user.js
 // @icon
 // ==/UserScript==
 //'use strict';
@@ -87,7 +92,7 @@ if ((typeof GM_deleteValue == 'undefined') || (typeof GM_addStyle == 'undefined'
 var doc = document,
     cli = console;
 
-// function shorteners
+// function aliases
 var __slice = [].slice,
     __indexOf = [].indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; },
     __hasProp = {}.hasOwnProperty,
@@ -372,7 +377,7 @@ var $, $$;
 
     $.oldValue = {}; // backups of old values
 
-    // start dynamically updating a key by running a callback
+    // create a callback to keep a value updated
     $.sync = function(key, callback) {
         key = info.namespace + key;
         $.syncing[key] = callback;
@@ -384,13 +389,16 @@ var $, $$;
     (function() {
         var onChange = function(key) {
             var callback;
+            // check if there's a method to sync the key
             if (!(callback = $.syncing[key])) {
-                return;
+                return; // no method
             }
+            // get the new value, and if it's the same don't bother with changes
             var newValue = GM_getValue(key);
             if (newValue === $.oldValue[key]) {
                 return;
             }
+            // if we didn't delete the value record the change
             if (newValue !== null) {
                 $.oldValue[key] = newValue;
                 return callback(JSON.parse(newValue), key);
@@ -462,7 +470,7 @@ var $, $$;
             if (key in $.syncing) {
                 localStorage.setItem(key, val);
             }
-            return localStorage.setItem(key, val);
+            return GM_setValue(key, val);
         };
         return function(keys, val) {
             if (typeof keys === 'string') {
@@ -476,9 +484,13 @@ var $, $$;
         };
     })();
 
-    // $.clear
+    // delete ALL everything associated with VES from storage
+    $.clear = function(callback) {
+        // TODO
+        return typeof callback === "function" ? callback() : void 0;
+    }
 
-    // remove a single value value from an array
+    // remove a single value val from an array
     $.remove = function(array, val) {
         var i = array.indexOf(val);
         // if the value isn't found return false
@@ -549,6 +561,7 @@ var System = {
         this.browser = this.searchString(this.dataBrowser) || "unknown browser";
         this.version = this.searchVersion(navigator.userAgent) || this.searchVersion(navigator.appVersion) || "unknown version";
         this.OS = this.searchString(this.dataOS) || "unknown OS";
+        this.storage = this.localStorageTest();
     },
     searchString: function (data) {
         for (var i=0;i<data.length;i++) {
@@ -628,7 +641,20 @@ var System = {
             subString: "Linux",
             identity: "Linux"
         }
-    ]
+    ],
+    // return whether or not we can store data
+    localStorageTest: function() {
+        test = 'test';
+        try {
+            // GM_set/deleteValue falls back to localStorage
+            GM_setValue(info.namespace + test, test);
+            GM_deleteValue(info.namespace + test);
+            return true;
+        } catch (e) {
+            console.error('Setting a value to storage failed. Are you in a private session?');
+            return false;
+        }
+    }
 };
 System.init();
 
@@ -1033,7 +1059,7 @@ $.extend(Options = {
         if (newOptions) {
             Modules[moduleID].options = newOptions;
         }
-        VESStorage.setItem('VESOptions.' + moduleID, JSON.stringify(minify(Modules[moduleID].options)));
+       localStorage.setItem(info.namespace + moduleID, JSON.stringify(minify(Modules[moduleID].options)));
     },
     getOptionsFirstRun: [],
     getOptions: function(moduleID) {
@@ -1153,9 +1179,14 @@ Modules.debug = {
                 href: 'http://github.com/travis-g/Voat-Enhancement-Suite',
                 innerHTML: 'VES'
             });
-            var footer = $('.footer div', doc);
-            $.add(footer, separator);
-            $.add(footer, link);
+
+            $.asap((function() {
+                return doc.body;
+            }), function() {
+                var footer = $('.footer div', doc);
+                $.add(footer, separator);
+                $.add(footer, link);
+            })
         }
     },
     printSystemInfos: function() {
@@ -1766,17 +1797,22 @@ Modules.voatingBooth = {
                     }
                 }
             }
-            // run the modules' .go() function
-            for (module in Modules) {
-                if (typeof Modules[module] === 'object') {
-                    try {
-                        Modules[module].go();
-                    } catch (e) { // if one module breaks don't kill everything
-                        cli.log('\"' + Modules[module].moduleName + '\" initialization crashed!');
-                        cli.log(e.name + ': ' + e.message);
+            // run the modules' .go() function ASAP
+            // often, the document body is not available yet, so wait
+            $.asap((function() {
+                return doc.body;
+            }), function() {
+                for (module in Modules) {
+                    if (typeof Modules[module] === 'object') {
+                        try {
+                            Modules[module].go();
+                        } catch (e) { // if one module breaks don't kill everything
+                            cli.log('\"' + Modules[module].moduleName + '\" initialization crashed!');
+                            cli.log(e.name + ': ' + e.message);
+                        }
                     }
                 }
-            }
+            })
             // inject the CSS from all the modules
             $.addStyle(Utils.css, 'VESStyles');
         }
