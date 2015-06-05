@@ -1,20 +1,20 @@
 # Voat Enhancement Suite
 
-Voat Enhancement Suite (or VES) is an alpha userscript designed to enhance the user experience of Voat.co.
+Voat Enhancement Suite (or VES) is an alpha userscript designed to enhance the user experience of [Voat][voat].
 
-News, discussions, and general help can be found on VES's official subverse, [/v/Enhancement](https://voat.co/v/Enhancement).
+News, discussions, and general help can be found on VES's official subverse, [/v/Enhancement][/v/Enhancement].
 
 ## Introduction
 
-Voat.co is in alpha development. Many features provided by Reddit Enhancement Suite are already built in to the site's user experience, however there are some features not included (keyboard navigation, new comment highlighting, &c). This userscript is intended to add those features eventually.
+Voat itself is in alpha development. Many features provided by Reddit Enhancement Suite are already built in to the site's user experience, however there are some features not included (keyboard navigation, new comment highlighting, &c). This userscript is intended to add those features eventually.
 
 A few things:
 
-+ Intended features, as they're decided, are added within `TODO` lines in the userscript source (for now). I'm extremely open to ideas provided by other Voat users as everyone's best experience is priority.
-+ Please *do not* install this script if you want a guaranteed seamless Voat experience. Bugs in VES interferring with Voat may be common (or uncommon) depending on many factors.
-+ Updates will be pushed out automatically at specific version bumps. Not every commit will be a version bump.
++ I'm extremely open to ideas provided by other Voat users! Often, inspiration for VES features comes from threads on [/v/ideasforvoat](https://voat.co/v/ideasforvoat/).
++ Please *do not* install this script if you want a guaranteed seamless Voat experience. VES bugs interferring with Voat may be common (or uncommon) depending on many factors.
++ VES source code is split into two main branches: `master`, which is the tested and most stable version, and `dev`, which is where new features are added and tested before being pushed into master. If VES is installed from the master branch it should update automatically at version bumps.
 
-Regardless of VES performance, I hope you enjoy the functionalities VES will provide.
+Regardless of VES performance, I hope you enjoy it.
 
 Thank you!
 
@@ -26,7 +26,7 @@ Ideas for VES are always welcome! If you have JavaScript experience (or would li
 
 ## Installation
 
-VES should be compatible across all operating systems and most browsers. Below are instructions for the two browsers VES has been officially tested on.
+VES should be compatible across all operating systems and most browsers. Below are instructions for the two browsers VES is officially tested on.
 
 #### Chrome
 
@@ -46,3 +46,5 @@ VES should be compatible across all operating systems and most browsers. Below a
 ## [Download][dl]
 
 [dl]: https://github.com/travis-g/Voat-Enhancement-Suite/raw/master/voat-enhancement-suite.user.js
+[voat]: https://voat.co/
+[/v/Enhancement]: https://voat.co/v/Enhancement/
