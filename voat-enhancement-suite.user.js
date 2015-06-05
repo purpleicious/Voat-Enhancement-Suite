@@ -38,6 +38,19 @@ var info = {
 };
 
 
+Defaults = {
+    modules: {
+        'Debug': [true, 'Analytics for debugging.'],
+        'Hide Child Comments': [true, 'Allows you to hide child comments for easier reading.'],
+        'Search Helper': [true, 'Provides help with the use of search.'],
+        'Single Click': [true, 'Adds an [l+c] link that opens both the link and the comments page in new tabs.'],
+        'User Tags': [false, 'Tag Voat users in posts and comments.'],
+        'Voating Booth': [false, 'UI enhancements for Voat.'],
+        'Voating Never Ends': [false, 'Autoload next pages of posts.']
+    }
+};
+
+
 // GreaseMonkey API compatibility for non-GM browsers (Chrome, Safari, Firefox)
 // @copyright      2009, 2010 James Campos
 // @modified        2010 Steve Sobel - added some missing gm_* functions
@@ -706,7 +719,6 @@ var Utils = {
         //search:
         submit: /^https?:\/\/(?:[\-\w\.]+\.)?voat\.co\/(?:[\-\w\.]+\/)?submit/i,
         subverse: /^https?:\/\/(?:[\-\w\.]+\.)?voat\.co\/v\/([\w\.\+]+)/i,
-        dashboard: /^https?:\/\/(dashboard\.)?voat.co\/v\/dashboard\/([\w\.\+]+)/i,
         //subversePostListing:
     },
     isVoat: function() {
@@ -1111,6 +1123,9 @@ Modules.debug = {
             value: false,
             description: 'Print the contents of localStorage to the console on every page load.'
         },
+        // new options format:
+        //'Log System Info': [true, 'Print system information to the console. Helps when submitting bug reports.'],
+        //'Print localStorage': [true, 'Print the contents of localStorage to the console on each page.']
     },
     isEnabled: function() {
         // technically cheating
@@ -1175,6 +1190,8 @@ Modules.hideChildComments = {
             value: false,
             description: 'Automatically hide all child comments on page load?'
         }
+        // new options format
+        //'Auto Hide Child Comments': [false, 'Automatically hide all child comments on page load.'],
     },
     include: [
         'comments'
@@ -1301,6 +1318,9 @@ Modules.singleClick = {
             value: false,
             description: 'Hide the [l=c] where the link is the same as the comments page'
         }
+        // new options format:
+        //'Open Order': ['commentsfirst', 'The order to open the link and comments.' ['commentsfirst', 'linkfirst']],
+        //'Hide [l=c]': [false, 'Hide the [l=c] on self/text posts']
     },
     isEnabled: function() {
         return Utils.getModulePrefs(this.moduleID);
@@ -1424,6 +1444,9 @@ Modules.searchHelper = {
         //     value: true,
         //     description: 'When clicking on a post\'s flair, search its subverse for that flair. <p>May not work in some subverses that hide the actual flair and add pseudo-flair with CSS (only workaround is to disable subverse style).</p>'
         // }
+
+        // new options format:
+        //'Auto Search Current Subverse': [true, 'Search the current subverse by default when using the search box.']
     },
     isEnabled: function() {
         return Utils.getModulePrefs(this.moduleID);
@@ -1508,6 +1531,8 @@ Modules.userTags = {
             value: false,
             description: 'When on, the ignored user\'s entire post is hidden, not just the title.'
         }
+        // new options format:
+        //'Hard Ignore': [false, 'When on, the ignored user\'s entire post is hidden, not just the title.'],
     },
     isEnabled: function() {
         return Utils.getModulePrefs(this.moduleID);
@@ -1625,6 +1650,9 @@ Modules.voatingBooth = {
             value: 'none',
             description: 'Pin header elements to the page top, even when scrolling.'
         }
+        // new options format:
+        //'Full Voat': [false, 'Make Voat use the device\'s full width'],
+        //'Pin Header': ['none', 'Pin Voat elements to the page top when scrolling.', ['none', 'sub', 'header']]
     },
     include: [
         'all'
@@ -1738,13 +1766,20 @@ Modules.voatingBooth = {
         init: function() {
             Utils.resetModulePrefs();
 
-            // TODO load the defaults into memory
-            // getAllModulePrefs()?
+            /*
+                This is where we load options. To make sure we get everything, 
+                check the saved configs and see if we're running a newer version
+                of VES than we had previously. If it's newer, load the old
+                stuff, extend it with the new, and load the old stuff again.
+                Then look at the defaults for the list of all modules, and load
+                them if the user has them enabled.
+            */
 
             // load a user's saved settings
             return $.get(Storage, function(items) { // get saved Settings
                 // extend and replace the loaded defaults
                 $.extend(Storage, items);
+                cli.log(Storage)
 
                 // start loading the modules once <head> can be found
                 return $.asap((function() {
