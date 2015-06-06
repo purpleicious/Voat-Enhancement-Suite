@@ -755,8 +755,6 @@ var Utils = {
             var currURL = location.href;
             if (Utils.regexes.profile.test(currURL)) {
                 pageType = 'profile';
-            } else if (Utils.regexes.dashboard.test(currURL)) {
-                pageType = 'dashboard';
             } else if (Utils.regexes.comments.test(currURL)) {
                 pageType = 'comments';
             } else if (Utils.regexes.inbox.test(currURL)) {
