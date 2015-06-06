@@ -1779,8 +1779,6 @@ Modules.voatingBooth = {
             return $.get(Storage, function(items) { // get saved Settings
                 // extend and replace the loaded defaults
                 $.extend(Storage, items);
-                
-                debugger;
 
                 // start loading the modules once <head> can be found
                 return $.asap((function() {
