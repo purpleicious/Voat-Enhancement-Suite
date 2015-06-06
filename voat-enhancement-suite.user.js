@@ -302,7 +302,7 @@ var $, $$;
     // create a custom event type
     $.event = function(event, detail, root) {
         // OR function(event, detail), if root is document
-        if (root == null) {
+        if (root === null) {
             root = doc;
         }
         if ((detail !== null) && typeof cloneInto === 'function') {
@@ -335,7 +335,8 @@ var $, $$;
                 return exec();
             }
             clearTimeout(timeout);
-            return timeout = setTimeout(exec, wait);
+            timeout = setTimeout(exec, wait);
+            return timeout;
         };
     };
 
@@ -393,7 +394,8 @@ var $, $$;
         key = info.namespace + key;
         $.syncing[key] = callback;
         // back up the previous key value from localStorage
-        return Storage[key] = localStorage.getItem(key);
+        Storage[key] = localStorage.getItem(key);
+        return Storage[key];
     };
 
     // create an event to synchronize settings changes
@@ -499,7 +501,7 @@ var $, $$;
     $.clear = function(callback) {
         // TODO
         return typeof callback === "function" ? callback() : void 0;
-    }
+    };
 
     // remove a single value val from an array
     $.remove = function(array, val) {
@@ -518,7 +520,7 @@ var escape, safeJSON; // Array.prototype.indexOf
     // check for the index of val, and if i 
     // start checking at index i
     Array.prototype.indexOf = function(val, i) {
-        i || (i = 0);
+        if (!i) i = 0;
         var length = this.length;
         while (i < length) {
             if (this[i] === val) {
@@ -700,7 +702,7 @@ function setUpStorage() {
     if (!(System.storage)) {
         cli.error('Browser storage is unreachable. Are you in a private session?');
     }
-};
+}
 
 
 // common utils/functions for modules
@@ -1156,7 +1158,7 @@ Modules.debug = {
                 var footer = $('.footer div', doc);
                 $.add(footer, separator);
                 $.add(footer, link);
-            })
+            });
         }
     },
     printSystemInfos: function() {
@@ -1777,7 +1779,8 @@ Modules.voatingBooth = {
             return $.get(Storage, function(items) { // get saved Settings
                 // extend and replace the loaded defaults
                 $.extend(Storage, items);
-                cli.log(Storage)
+                
+                debugger;
 
                 // start loading the modules once <head> can be found
                 return $.asap((function() {
@@ -1810,7 +1813,7 @@ Modules.voatingBooth = {
                         }
                     }
                 }
-            })
+            });
             // inject the CSS from all the modules
             $.addStyle(Utils.css, 'VESStyles');
         }
