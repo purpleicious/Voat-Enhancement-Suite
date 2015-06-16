@@ -27,7 +27,7 @@
 /*  stop jQuery conflicts with our homebrew $ function.
     jQuery aliases $ = jQuery, so prevent that ASAP.
     (https://api.jquery.com/jquery.noconflict/)         */
-var j = jQuery.noConflict();
+this.$ = this.jQuery = jQuery.noConflict(true);
 
 var info = {
     v: '0.0.9',
