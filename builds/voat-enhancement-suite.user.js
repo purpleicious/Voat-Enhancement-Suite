@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name        Voat Enhancement Suite
-// @version     0.0.5
+// @version     0.0.3
 // @description A suite of tools to enhance Voat.
 // @namespace   http://tjg.io/Voat-Enhancement-Suite
 // @author      @travis <travisjgrammer@gmail.com>
@@ -19,7 +19,7 @@
 // ==/UserScript==
 
 var info = {
-	v: '0.0.5',
+	v: '0.0.3',
 	namespace: 'VES.',
 	name: 'Voat Enhancement Suite',
 	abbr: 'VES'
