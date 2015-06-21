@@ -2,17 +2,17 @@
 
 Voat Enhancement Suite (or VES) is an alpha userscript designed to enhance the user experience of [Voat][voat].
 
-News, discussions, and general help can be found on VES's official subverse, [/v/Enhancement][/v/Enhancement].
+News, discussions, and general help can be found on VES's official subverse, [/v/Enhancement][subverse].
 
 ## Introduction
 
-Voat itself is in alpha development. Many features provided by Reddit Enhancement Suite are already built in to the site's user experience, however there are some features not included (keyboard navigation, new comment highlighting, &c). This userscript is intended to add those features eventually.
+Voat itself is in alpha development, and many features found in Reddit Enhancement Suite are already built into the site's user experience. However, there are some features Voat does not have (keyboard navigation, new comment highlighting, &c). VES intends to add those features and more.
 
 A few things:
 
-+ I'm extremely open to ideas provided by other Voat users! Often, inspiration for VES features comes from threads on [/v/ideasforvoat](https://voat.co/v/ideasforvoat/).
-+ Please *do not* install this script if you want a guaranteed seamless Voat experience. VES bugs interferring with Voat may be common (or uncommon) depending on many factors.
-+ VES source code is split into two main branches: `master`, which is the tested and most stable version, and `dev`, which is where new features are added and tested before being pushed into master. If VES is installed from the master branch it should update automatically at version bumps.
++ Ideas and code are both welcome contributions, and will be treated as such (see Contributing).
++ VES bugs interfering with Voat may be common (or uncommon) depending on many factors.
++ VES's source code is split into two main branches. `master` is the most stable branch, and `dev` is where new features are added and tested. Before installing from `dev`, understand that it may be broken.
 
 Regardless of VES performance, I hope you enjoy it.
 
@@ -20,13 +20,13 @@ Thank you!
 
 ## Contributing
 
-Ideas for VES are always welcome! If you have JavaScript experience (or would like some) VES can be forked and tinkered with. If you edit or create a new module submit a pull request for review.
+If you have JavaScript/jQuery experience (or would like some), fork VES and tinker around. If you optimize a module, create a new one, or if you're willing to share some code that you've thrown together, create a GitHub issue, submit a link or self post on [/v/Enhancement][subverse], or just send a PM to me somewhere.
 
-<!--[![Code Climate](https://codeclimate.com/github/travis-g/Voat-Enhancement-Suite/badges/gpa.svg)](https://codeclimate.com/github/travis-g/Voat-Enhancement-Suite)-->
+Overall, any contributions to VES will be graciously credited.
 
 ## Installation
 
-VES should be compatible across all operating systems and most browsers. Below are instructions for the two browsers VES is officially tested on.
+VES should be compatible across all operating systems and most userscript implementations. Below are instructions for the two browsers VES is officially tested on.
 
 #### Chrome
 
@@ -41,10 +41,10 @@ VES should be compatible across all operating systems and most browsers. Below a
 	2. Restart Firefox.
 2. Install VES.
 
-*Firefox may initially disable userscripts. Check under the User Scripts tab in the Add-ons Manager if VES does not appear to be loaded.*
+*Greasemonkey scripts are sometimes disabled after installation. Check under the User Scripts tab of the Add-ons Manager if VES does not appear to be loaded.*
 
 ## [Download][dl]
 
-[dl]: https://github.com/travis-g/Voat-Enhancement-Suite/raw/master/voat-enhancement-suite.user.js
+[dl]: https://github.com/travis-g/Voat-Enhancement-Suite/raw/master/builds/voat-enhancement-suite.user.js
 [voat]: https://voat.co/
-[/v/Enhancement]: https://voat.co/v/Enhancement/
+[subverse]: https://voat.co/v/Enhancement/
