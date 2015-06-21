@@ -34,20 +34,20 @@ Modules.debug = {
 			this.printSystemInfos();
 
 			// add a link to VES in the footer
-			var separator = $.el('span', {
+			var separator = el('span', {
 				className: 'separator',
 			});
-			var link = $.el('a', {
+			var link = el('a', {
 				href: 'http://github.com/travis-g/Voat-Enhancement-Suite',
 				innerHTML: 'VES'
 			});
 
-			$.asap((function() {
+			asap((function() {
 				return doc.body;
 			}), function() {
 				var footer = $('.footer div', doc);
-				$.add(footer, separator);
-				$.add(footer, link);
+				add(footer, separator);
+				add(footer, link);
 			});
 		}
 	},

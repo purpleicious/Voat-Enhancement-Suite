@@ -40,6 +40,124 @@ if (typeof(unsafeWindow) !== 'undefined') {
 }
 
 
+/*
+	global utils
+*/
+
+// create a JSON from key/val pair
+item = function(key, val) {
+	var item = {};
+	item[key] = val;
+	return item;
+};
+
+// add (with replacement) a JSON of properties to an object
+extend = function(obj, props) {
+	for (var key in props) {
+		val = props[key];
+		obj[key] = val;
+	}
+};
+
+// wait until test can be done and then perform a callback
+asap = function(test, callback) {
+	// if test CAN be done perform the callback
+	if (test()) {
+		return callback();
+	} else {
+		// if you can't do test, wait and try again
+		return setTimeout(asap, 25, test, callback);
+	}
+};
+
+
+// DOM utilities
+
+// create a new element with a list of properties
+el = function(tag, props) {
+	var el = doc.createElement(tag);
+	// if a JSON of properties is passed in, apply them
+	if (props) {
+		extend(el, props);
+	}
+	return el;
+};
+// alias for getElementById()
+id = function(id) {
+	return doc.getElementById(id);
+};
+
+fragment = function() {
+	return doc.createDocumentFragment();
+};
+nodes = function(nodes) {
+	// if just one node return it
+	if (!(nodes instanceof Array)) {
+		return nodes;
+	}
+	// if theres a bunch, create a new section of document,
+	// then add all of the nodes as sibilings
+	var frag = fragment();
+	for (var i = 0, len = nodes.length; i < len; i++) {
+		var node = nodes[i];
+		frag.appendChild(node);
+	}
+	return frag;
+};
+
+add = function(parent, el) {
+	return $(parent).append(nodes(el));
+};
+prepend = function(parent, el) {
+	return $(parent).insertBefore(nodes(el), parent.firstChild);
+};
+after = function(root, el) {
+	return root.parentNode.insertBefore(nodes(el), root.nextSibiling);
+};
+before = function(root, el) {
+	return root.parentNode.insertBefore(nodes(el), root);
+};
+
+// create a custom event
+event = function(event, detail, root) {
+	// OR function(event, detail), if root is document
+	if (root === null) {
+		root = doc;
+	}
+	if ((detail !== null) && typeof cloneInto === 'function') {
+		detail = cloneInto(detail, doc.defaultView);
+	}
+	return root.dispatchEvent(new CustomEvent(event, {
+		bubbles: true,
+		detail: detail
+	}));
+};
+
+// limit the rate the a function can fire at, so
+// browser performance is maintained
+debounce = function(wait, func) {
+	var args = null;
+	var lastCall = 0;
+	var timeout = null;
+	var that = null;
+	var exec = function() {
+		lastCall = Date.now();
+		return func.apply(that, args);
+	};
+	return function() {
+		args = arguments;
+		that = this;
+		// if enough time has passed exec the function
+		if (lastCall < Date.now() - wait) {
+			return exec();
+		}
+		clearTimeout(timeout);
+		timeout = setTimeout(exec, wait);
+		return timeout;
+	};
+};
+
+
 // sanitize HTML
 escape = (function() {
 	var str = {
@@ -108,6 +226,7 @@ var Modules = {};
 if ((typeof GM_deleteValue == 'undefined') || (typeof GM_addStyle == 'undefined')) {
 	var GM_getValue = function(name, defaultValue) {
 		var value = localStorage[name];
+		// do not use '===' (ignore JSHint)
 		return value == null ? defaultValue : JSON.parse(value);
 	};
 
@@ -140,6 +259,67 @@ if ((typeof GM_deleteValue == 'undefined') || (typeof GM_addStyle == 'undefined'
 	// GM_xmlhttpRequest
 }
 
+// get values out of GM/localStorage, and perform an
+// action using them with the callback. 'items' (whatever matches 'key')
+// can be used as the argument in the callback.
+get = function(key, val, callback) {
+// OR function(key, callback), if val isn't specified
+	var items;
+	// if val is specified then we're looking for the specific instance of
+	// 'key' with value 'val'
+	if (typeof callback === 'function') {
+		items = item(key, val);
+	} else { // if val isn't specified get every entry with the key
+		items = key;
+		callback = val;
+	}
+
+	// perform the callback
+	for (key in items) {
+		val = GM_getValue(info.namespace + key);
+		if (val) {
+			items[key] = JSON.parse(val);
+		}
+	}
+	return callback(items);
+};
+
+// set values to GM/localStorage.
+set = (function() {
+	var set = function(key, val) {
+		key = info.namespace + key; // 'key' -> 'VES.key'
+		val = JSON.stringify(val);
+		return GM_setValue(key, val);
+	};
+	// this is the actual definition of set():
+	return function(keys, val) {
+		if (typeof keys === 'string') {
+			// set the value if there's only one key
+			set(keys, val);
+			return;
+		}
+		// if it's a JSON, iterate & set each key
+		for (var key in keys) {
+			val = keys[key];
+			set(key, val);
+		}
+	};
+})();
+
+// remove data from GM/localStorage
+_delete = function(keys) {
+	if (!(keys instanceof Array)) { // we'll want an array
+		keys = [keys];
+	}
+	// delete each key:
+	for (var i = 0, len = keys.length; i < len; i++) {
+		var key = keys[i];
+		key = info.namespace + key; // 'key' -> 'VES.key'
+		// purge the key's data
+		localStorage.removeItem(key);
+		GM_deleteValue(key);
+	}
+};
 
 function testLocalStorage() {
 	var accessible = true;
@@ -154,7 +334,7 @@ function testLocalStorage() {
 	}
 
 	if (!(accessible)) {
-		cli.error('Browser storage is unreachable. Are you in a private session?');
+		cli.error('Browser storage is unavailable. Are you in a private session?');
 	}
 }
 
@@ -247,424 +427,29 @@ var System = {
 };
 System.init();
 
-// function aliases
-var __slice = [].slice,
-	__indexOf = [].indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; },
-	__hasProp = {}.hasOwnProperty,
-	__extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
-	__bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
+/*
+	common utils/functions for modules
+*/
 
-
-// make some sorta-jQuery functions, http://api.jquery.com/
-var $, $$;
-// {{{
-	// querySelector on root (or document.body)
-	$ = function(selector, root) {
-		if (root === null) {
-			root = doc.body;
-		}
-		return root.querySelector(selector);
-	};
-	// querySelectorAll on root (or document.body)
-	$$ = function(selector, root) {
-		if (root === null) {
-			root = doc.body;
-		}
-		return __slice.call(root.querySelectorAll(selector));
-	};
-
-	$.extend = function(obj, prop) {
-		for (var key in prop) {
-			var value = prop[key];
-			if (prop.hasOwnProperty(key)) {
-				obj[key] = value;
-			}
-		}
-	};
-
-	// alias for getElementById(id)
-	$.id = function(id) {
-		return doc.getElementById(id);
-	};
-
-	// once page is loaded execute a function
-	$.ready = function(func) {
-		// if the document is ready queue the task
-		if (doc.readyState !== 'loading') {
-			$.taskQueue(func);
-			return;
-		}
-		// create a callback to unbind the event from the document and
-		// execute the function
-		var callback = function() {
-			$.off(doc, 'DOMContentLoaded', callback);
-			return func();
-		};
-		// set an event to execute the callback function once the page is loaded
-		return $.on(doc, 'DOMContentLoaded', callback);
-	};
-
-	// add a list of properties to an object
-	$.extend = function(obj, props) {
-		for (var key in props) {
-			val = props[key];
-			obj[key] = val;
-		}
-	};
-
-	// wait until test can be done and then perform a callback
-	$.asap = function(test, callback) {
-		// if test CAN be done perform the callback
-		if (test()) {
-			return callback();
-		} else {
-			// if you can't do test, wait and try again
-			return setTimeout($.asap, 25, test, callback);
-		}
-	};
-
-	// create a <style> element with given CSS and an id,
-	// and append it to <head> as soon as possible.
-	$.addStyle = function(css, id) {
-		var style = $.el('style', {
-			id: id,
-			textContent: css
-		});
-		$.asap((function() {
-			return doc.head;
-		}), function() {
-			return $.add(doc.head, style);
-		});
-		return style;
-	};
-
-	// add a class or list of classes to an element
-	$.addClass = function(/*element, class1, class2...*/) {
-		var el = arguments[0], classnames = 2 <= arguments.length ? __slice.call(arguments, 1) : [];
-		for (var i = 0, len = classnames.length; i < len; i++) {
-			var classname = classnames[i];
-			el.classList.add(classname);
-		}
-	};
-
-	// remove a class or list of classes from an element
-	$.rmClass = function(/*element, class1, class2...*/) {
-		var el = arguments[0], classnames = 2 <= arguments.length ? __slice.call(arguments, 1) : [];
-		for (var i = 0, len = classnames.length; i < len; i++) {
-			var classname = classnames[i];
-			el.classList.remove(classname);
-		}
-	};
-
-	// toggle a class on an element
-	$.toggleClass = function(el, classname) {
-		return el.classList.toggle(classname);
-	};
-
-	// return true if an element has a given class
-	$.hasClass = function(el, classname) {
-		return __indexOf.call(el.classList, classname) >= 0;
-	};
-
-	// remove a single element
-	$.rm = function(el) {
-		return el.remove();
-	};
-
-	// remove everything inside a root element
-	$.rmAll = function(root) {
-		root.textContent = null;
-		return root.textContent;
-	};
-
-	// make a new piece of document to be added
-	$.fragment = function() {
-		return doc.createDocumentFragment();
-	};
-	$.nodes = function(nodes) {
-		// if just one node return it
-		if (!(nodes instanceof Array)) {
-			return nodes;
-		}
-		// if theres a bunch, create a new section of document,
-		// then add all of the nodes as sibilings
-		var frag = $.fragment();
-		for (var i = 0, len = nodes.length; i < len; i++) {
-			var node = nodes[i];
-			frag.appendChild(node);
-		}
-		return frag;
-	};
-	// add an element after its parent's existing children
-	$.add = function(parent, el) {
-		return parent.appendChild($.nodes(el));
-	};
-	// add an element to a parent as a firstChild
-	$.prepend = function(parent, el) {
-		return parent.insertBefore($.nodes(el), parent.firstChild);
-	};
-	// add an element after another
-	$.after = function(root, el) {
-		return root.parentNode.insertBefore($.nodes(el), root.nextSibiling);
-	};
-	// insert an element before another
-	$.before = function(root, el) {
-		return root.parentNode.insertBefore($.nodes(el), root);
-	};
-
-	// create an element and set it's properties using JSON data
-	$.el = function(tag, props) {
-		var el = doc.createElement(tag);
-		// if a JSON of properties is passed in, apply them
-		if (props) {
-			$.extend(el, props);
-		}
-		return el;
-	};
-
-	// add an event and a handler to an element
-	$.on = function(el, events, handler) {
-		var ref = events.split(' ');
-		for (var i = 0, len = ref.length; i < len; i++) {
-			var event = ref[i];
-			el.addEventListener(event, handler, false);
-		}
-	};
-
-	// remove an event and handler from an element
-	$.off = function(el, events, handler) {
-		var ref = events.split(' ');
-		for (var i = 0, len = ref.length; i < len; i++) {
-			var event = ref[i];
-			el.removeEventListener(event, handler, false);
-		}
-	};
-
-	// $.one
-
-	// create a custom event type
-	$.event = function(event, detail, root) {
-		// OR function(event, detail), if root is document
-		if (root === null) {
-			root = doc;
-		}
-		if ((detail !== null) && typeof cloneInto === 'function') {
-			detail = cloneInto(detail, doc.defaultView);
-		}
-		return root.dispatchEvent(new CustomEvent(event, {
-			bubbles: true,
-			detail: detail
-		}));
-	};
-
-	$.open = GM_openInTab;
-
-	// limit the rate the a function can fire at, so
-	// browser performance is maintained
-	$.debounce = function(wait, func) {
-		var args = null;
-		var lastCall = 0;
-		var timeout = null;
-		var that = null;
-		var exec = function() {
-			lastCall = Date.now();
-			return func.apply(that, args);
-		};
-		return function() {
-			args = arguments;
-			that = this;
-			// if enough time has passed exec the function
-			if (lastCall < Date.now() - wait) {
-				return exec();
-			}
-			clearTimeout(timeout);
-			timeout = setTimeout(exec, wait);
-			return timeout;
-		};
-	};
-
-	// create a queue of tasks to execute when possible
-	$.taskQueue = (function() {
-		var queue = [];
-		// function to execute the next task in queue
-		var execTask = function() {
-			var task = queue.shift(); // pop the next task!
-			//  task = [function, arg1, arg2, ...]
-
-			// read the task's base function
-			var func = task[0];
-			// get the task's function args (everything starting at task[1])
-			var args = Array.prototype.slice.call(task, 1);
-
-			// do the task
-			return func.apply(func, args);
-		};
-
-		// window.MessageChannel is for intra- and inter-window communication.
-		// http://www.w3.org/TR/webmessaging/
-		if (window.MessageChannel) { // check if MessageChannels are supported
-			// create a new message channel
-			var taskChannel = new MessageChannel();
-			// execute the task when port1 receives a message
-			taskChannel.port1.onmessage = execTask;
-			return function() {
-				// push the function into the queue
-				queue.push(arguments);
-				// send a message to port1 to trigger the function
-				return taskChannel.port2.postMessage(null);
-			};
-		} else {
-			return function() {
-				// if MessageChannels aren't supported then add the function
-				// to the queue and exec
-				queue.push(arguments);
-				return setTimeout(execTask, 0);
-			};
-		}
-	})();
-
-	// create a JSON from key/val pair
-	$.item = function(key, val) {
-		var item = {};
-		item[key] = val;
-		return item;
-	};
-
-	$.syncing = {}; // list of functions to keep values synchronized
-
-	// create a callback to keep a value updated
-	$.sync = function(key, callback) {
-		key = info.namespace + key;
-		$.syncing[key] = callback;
-		// back up the previous key value from localStorage
-		Storage[key] = localStorage.getItem(key);
-		return Storage[key];
-	};
-
-	// create an event to synchronize settings changes
-	(function() {
-		var onChange = function(key) {
-			var callback;
-			// check if there's a method to sync the key
-			if (!(callback = $.syncing[key])) {
-				return; // no method
-			}
-			// get the new value, and if it's the same don't bother with changes
-			var newValue = GM_getValue(key);
-			if (newValue === Storage[key]) {
-				return;
-			}
-			// if we didn't delete the value record the change
-			if (newValue !== null) {
-				Storage[key] = newValue;
-				return callback(JSON.parse(newValue), key);
-			} else {
-				delete Storage[key];
-				return callback(void 0, key);
-			}
-		};
-		$.on(window, 'storage', function(arg) {
-			var key = arg.key;
-			return onChange(key);
-		});
-		return $.forceSync = function(key) {
-			return onChange(info.namespace + key);
-		};
-	})();
-
-	// stop syncing a value
-	$.desync = function(key) {
-		return delete $.syncing[info.namespace + key];
-	};
-
-	// remove data from localStorage
-	$["delete"] = function(keys) {
-		if (!(keys instanceof Array)) { // we'll want an array
-			keys = [keys];
-		}
-		// delete each key:
-		for (var i = 0, len = keys.length; i < len; i++) {
-			var key = keys[i];
-			key = info.namespace + key; // key names are prefixed with 'VES.'
-			// purge the key's data
-			localStorage.removeItem(key);
-			GM_deleteValue(key);
-		}
-	};
-
-	// get values out of localStorage, and perform an
-	// action using them with the callback. 'items' (whatever matches 'key')
-	// can be used as the argument in the callback.
-	$.get = function(key, val, callback) {
-	//   OR function(key, callback), if val isn't specified
-		var items;
-		// if val is specified then we're looking for the specific instance of
-		// 'key' with value 'val'
-		if (typeof callback === 'function') {
-			items = $.item(key, val);
-		} else { // if val isn't specified get every entry with the key
-			items = key;
-			callback = val;
-		}
-		// add a task to the queue with the callback we want to perform
-		return $.taskQueue(function() {
-			for (key in items) {
-				val = localStorage.getItem(info.namespace + key);
-				if (val) {
-					items[key] = JSON.parse(val);
-				}
-			}
-			return callback(items);
-		});
-	};
-
-	// set values to localStorage.
-	$.set = (function() {
-		var set = function(key, val) {
-			key = info.namespace + key;
-			val = JSON.stringify(val);
-			if (key in $.syncing) {
-				localStorage.setItem(key, val);
-			}
-			return GM_setValue(key, val);
-		};
-		return function(keys, val) {
-			if (typeof keys === 'string') {
-				set(keys, val);
-				return;
-			}
-			for (var key in keys) {
-				val = keys[key];
-				set(key, val);
-			}
-		};
-	})();
-
-	// delete ALL everything associated with VES from storage
-	$.clear = function(callback) {
-		// TODO
-		return typeof callback === "function" ? callback() : void 0;
-	};
-
-	// remove a single value val from an array
-	$.remove = function(array, val) {
-		var i = array.indexOf(val);
-		// if the value isn't found return false
-		if (i === -1) return false;
-
-		// remove the value (which was found at array[i])
-		array.splice(i, 1); // array.splice(indexToRemove, removeHowMany)
-		return true;
-	};
-// }}}
-
-
-// common utils/functions for modules
 Utils = {
 	css: '',
 	addCSS: function(css) {
 		this.css += css;
 	},
+	// create and add VES's CSS to <head>
+	applyCSS: function(css, id) {
+		var style = el('style', {
+			id: id,
+			textContent: css
+		});
+		asap((function() {
+			return doc.head;
+		}), function() {
+			return add(doc.head, style);
+		});
+		return style;
+	},
+
 	regexes: {
 		all: /^https?:\/\/(?:[\-\w\.]+\.)?voat\.co\//i,
 		inbox: /^https?:\/\/(?:[\-\w\.]+\.)?voat\.co\/messaging\/([\w\.\+]+)\//i,
@@ -829,7 +614,14 @@ Utils = {
 		// check if isDarkMode has been run already
 		if (typeof(this.isDarkModeCached) != 'undefined') return this.isDarkModeCached;
 		// search the VES stylesheet link URL for 'Dark'
-		this.isDarkModeCached = document.getElementsByTagName('link')[1].href.indexOf('Dark') > -1;
+
+		this.isDarkModeCached = false;
+		var links = $('link');
+		for (var i = 0, len = links.length; i < len; i++) {
+			if (links[i].href.indexOf('Dark') > -1) {
+				this.isDarkModeCached = true;
+			}
+		}
 		return this.isDarkModeCached;
 	},
 };
@@ -1013,48 +805,6 @@ $.extend(Utils, {
 		}
 		this.getOptionsFirstRun[moduleID] = true;
 		return Modules[moduleID].options;
-	},
-	/*getOptions: function(moduleID) {
-		//console.log("getting options for " + moduleID);
-		var thisOptions = localStorage.getItem('VESOptions.' + moduleID);
-		//console.log("thisOptions = " + thisOptions);
-		var currentTime = new Date();
-		if ((thisOptions) && (thisOptions != 'undefined') && (thisOptions !== null)) {
-			storedOptions = JSON.parse(thisOptions);
-			codeOptions = Modules[moduleID].options;
-			for (var attrname in codeOptions) {
-				if (typeof(storedOptions[attrname]) == 'undefined') {
-					storedOptions[attrname] = codeOptions[attrname];
-				}
-			}
-			Modules[moduleID].options = storedOptions;
-			localStorage.setItem('VESOptions.' + moduleID, JSON.stringify(Modules[moduleID].options));
-		} else {
-			//console.log('getOptions: setting defaults');
-			// nothing's been stored, so set defaults:
-			localStorage.setItem('VESOptions.' + moduleID, JSON.stringify(Modules[moduleID].options));
-		}
-		//console.log('getOptions: returning options for ' + moduleID);
-		return Modules[moduleID].options;
-	}, */
-	"export": function() {
-		var settings = Storage;
-		return $.get(settings, function(settings) {
-			return Settings.downloadExport('Settings', {
-				version: info.version,
-				date: Date.now(),
-				settings: settings
-			});
-		});
-	},
-	downloadExport: function(title, data) {
-		var a = $.el('a', { // craft a link
-			download: 'VES v' + info.version + ' ' + title + '.' + data.date + '.json',
-			href: "data:application/json;base64," + (btoa(unescape(encodeURIComponent(JSON.stringify(data, null, 2)))))
-		});
-		$.add(doc.body, a);
-		a.click();  // force clicking the download link
-		return $.rm(a); // remove the download link
 	}
 });
 
@@ -1094,20 +844,20 @@ Modules.debug = {
 			this.printSystemInfos();
 
 			// add a link to VES in the footer
-			var separator = $.el('span', {
+			var separator = el('span', {
 				className: 'separator',
 			});
-			var link = $.el('a', {
+			var link = el('a', {
 				href: 'http://github.com/travis-g/Voat-Enhancement-Suite',
 				innerHTML: 'VES'
 			});
 
-			$.asap((function() {
+			asap((function() {
 				return doc.body;
 			}), function() {
 				var footer = $('.footer div', doc);
-				$.add(footer, separator);
-				$.add(footer, link);
+				add(footer, separator);
+				add(footer, link);
 			});
 		}
 	},
@@ -1156,8 +906,8 @@ Modules.hideChildComments = {
 	go: function() {
 		if ((this.isEnabled()) && (this.isMatchURL())) {
 			// begin creating the OP's 'hide child comments' button
-			var toggleButton = $.el('li');
-			this.toggleAllLink = $.el('a', {
+			var toggleButton = el('li');
+			this.toggleAllLink = el('a', {
 				textContent: 'hide all child comments',
 				href: '#',
 				title: 'Show only replies to original poster.',
@@ -1176,7 +926,7 @@ Modules.hideChildComments = {
 					this.textContent = 'hide all child comments';
 				}
 			}, true);
-			$.add(toggleButton, this.toggleAllLink);
+			add(toggleButton, this.toggleAllLink);
 			var commentMenu = doc.querySelector('ul.buttons');
 			if (commentMenu) {
 				// add the post's toggle
@@ -1186,8 +936,8 @@ Modules.hideChildComments = {
 				var rootComments = doc.querySelectorAll('div.commentarea > div.sitetable > div.thread');
 				// for every root comment add a hide child elements link
 				for (var i = 0, len = rootComments.length; i < len; i++) {
-					toggleButton = $.el('li');
-					var toggleLink = $.el('a', {
+					toggleButton = el('li');
+					var toggleLink = el('a', {
 						textContent: 'hide child comments',
 						href: '#',
 						className: 'toggleChildren'
@@ -1197,7 +947,7 @@ Modules.hideChildComments = {
 						e.preventDefault();
 						Modules.hideChildComments.toggleComments(this.getAttribute('action'), this);
 					}, true);
-					$.add(toggleButton, toggleLink);
+					add(toggleButton, toggleLink);
 					//console.log('toggleButton: ' + typeof(toggleButton));
 					// get the first (if any) comment of the root
 					var childComment = rootComments[i].querySelector('.child');
@@ -1220,7 +970,7 @@ Modules.hideChildComments = {
 	toggleComments: function(action, obj) {
 		var commentContainers;
 		if (obj) { // toggle a single comment tree
-			commentContainers = j(obj).closest('.thread');
+			commentContainers = $(obj).closest('.thread');
 		} else { // toggle all comments
 			cli.log('Hiding all child comments...');
 			commentContainers = doc.querySelectorAll('div.commentarea > div.sitetable > div.thread');
@@ -1237,11 +987,11 @@ Modules.hideChildComments = {
 				for (var x = 0, y = thisChildren.length; x < y; x++) {
 					if (action === 'hide') {
 						// Voat's already got a .hidden class, use that
-						$.addClass(thisChildren[x], 'hidden');
+						$(thisChildren[x]).addClass('hidden');
 						thisToggleLink.innerHTML = 'show child comments';
 						thisToggleLink.setAttribute('action', 'show');
 					} else {
-						$.rmClass(thisChildren[x], 'hidden');
+						$(thisChildren[x]).removeClass('hidden');
 						thisToggleLink.innerHTML = 'hide child comments';
 						thisToggleLink.setAttribute('action', 'hide');
 					}
@@ -1352,7 +1102,7 @@ Modules.searchHelper = {
 		}
 	},
 	searchSubverseByDefault: function() {
-		var restrictSearch = j('form[action="/search"] > input#l');
+		var restrictSearch = $('form[action="/search"] > input#l');
 		if (restrictSearch && !$('meta[content="search results"]', doc.head)) { // prevent autochecking after searching with it unchecked
 			restrictSearch.checked = true;
 		}
@@ -1420,23 +1170,23 @@ Modules.singleClick = {
 	},
 	applyLinks: function(ele) {
 		ele = ele || doc;
-		var entries = $$('.sitetable>.submission .entry', ele); // beware of .alert-featuredsub!
+		var entries = $('.sitetable>.submission .entry', ele); // beware of .alert-featuredsub!
 		for (var i = 0, len = entries.length; i < len; i++) {
 			if ((typeof entries[i] !== 'undefined') && (!entries[i].classList.contains('lcTagged'))) {
-				$.addClass(entries[i], 'lcTagged');
-				this.titleLA = $('A.title', entries[i]);
+				entries[i].className += 'lcTagged';
+				this.titleLA = entries[i].querySelector('A.title');
 				if (this.titleLA !== null) {
-					var thisLink = this.titleLA.href;
+					var thisLink = $(this.titleLA).attr('href');
 					// check if it's a relative path (no http://)
 					if (!(thisLink.match(/^http/i))) {
-						thisLink = 'http://' + document.domain + thisLink;
+						thisLink = 'http://' + doc.domain + thisLink;
 					}
 					//console.log("thisLink -- " + thisLink);
 					var thisComments = (thisComments = entries[i].querySelector('.comments')) && thisComments.href;
 					//console.log("thisComments -- " + thisComments);
 					var thisUL = $('ul.flat-list', entries[i]);
-					var singleClickLI = $.el('li');
-					var singleClickLink = $.el('a', {
+					var singleClickLI = el('li');
+					var singleClickLink = el('a', {
 						className: 'VESSingleClick'
 					});
 					singleClickLink.setAttribute('thisLink',thisLink);
@@ -1446,8 +1196,8 @@ Modules.singleClick = {
 					} else if (!(this.options.hideLEC.value)) {
 						singleClickLink.innerHTML = '[l=c]';
 					}
-					$.add(singleClickLI, singleClickLink);
-					$.add(thisUL, singleClickLI);
+					add(singleClickLI, singleClickLink);
+					add(thisUL, singleClickLI);
 					singleClickLink.addEventListener('click', function(e) {
 						e.preventDefault();
 						if(e.button != 2) {
@@ -1524,7 +1274,7 @@ Modules.userTags = {
 			thisIgnore = null,
 			thisAuthor, thisPost, thisComment;
 
-		if ((authorObj) && (!($.hasClass(authorObj, 'userTagged'))) && (typeof authorObj !== 'undefined') && (authorObj !== null)) {
+		if ((authorObj) && (!($(authorObj).hasClass('userTagged'))) && (typeof authorObj !== 'undefined') && (authorObj !== null)) {
 			if (authorObj.getAttribute('data-username')) {
 				thisAuthor = authorObj.getAttribute('data-username');
 			}
@@ -1535,7 +1285,7 @@ Modules.userTags = {
 			}
 			thisAuthor = thisAuthor.toLowerCase();
 			if (!noTag) {
-				$.addClass(authorObj, 'userTagged');
+				$(authorObj).addClass('userTagged');
 				if (typeof userObject[thisAuthor] === 'undefined') {
 					if (this.tags && this.tags[thisAuthor]) {
 						if (typeof this.tags[thisAuthor].tag !== 'undefined') {
@@ -1554,12 +1304,12 @@ Modules.userTags = {
 						ignore: thisIgnore,
 					};
 				}
-				var tag = $.el('span', {
+				var tag = el('span', {
 					className: 'VESUserTag',
 					alt: thisAuthor,
 					textContent: '+'
 				});
-				$.after(authorObj, tag);
+				after(authorObj, tag);
 			}
 		}
 	},
@@ -1628,10 +1378,10 @@ Modules.voatingBooth = {
 			}
 			switch (this.options.pinHeader.value) {
 				case 'header':
-					$.addClass(doc.body, 'pinHeader-header');
+					$(doc.body).addClass('pinHeader-header');
 					break;
 				case 'sub':
-					$.addClass(doc.body, 'pinHeader-sub');
+					$(doc.body).addClass('pinHeader-sub');
 					break;
 				default:
 					break;
@@ -1653,18 +1403,18 @@ Modules.voatingBooth = {
 		}
 	},
 	pinHeader: function() {
-		var header = $.id('header');
+		var header = id('header');
 		if (header === null) {
 			return;
 		}
 
-		var spacer = $.el('div');
+		var spacer = el('div');
 		spacer.id = 'VESPinnedHeaderSpacer';
 
 		var css = '#sr-header-area { left: 0; right: 0 }';
 		spacer.style.height = $('#header').outerHeight() + 'px';
 
-		$.before(header.nextSibling, spacer);
+		before(header.nextSibling, spacer);
 
 		css += 'body > #container { margin-top: 10px }';
 		css += '#header { position: fixed }';
@@ -1677,17 +1427,20 @@ Modules.voatingBooth = {
 	pinSubverseBar: function() {
 		// Make the subverse bar at the top of the page a fixed element
 
-		var sb = $.id('sr-header-area');
+		var sb = id('sr-header-area');
 		if (sb === null) {
 			return;
 		}
-		var header = $.id('header');
+		var header = id('header');
 
 		// add a dummy <div> inside the header to replace the subreddit bar (for spacing)
-		var spacer = $.el('div');
-		spacer.style.paddingTop = window.getComputedStyle(sb, null).paddingTop;
-		spacer.style.paddingBottom = window.getComputedStyle(sb, null).paddingBottom;
-		spacer.style.height = window.getComputedStyle(sb, null).height;
+		var spacer = el('div', {
+			style: {
+				paddingTop: window.getComputedStyle(sb, null).paddingTop,
+				paddingBottom: window.getComputedStyle(sb, null).paddingBottom,
+				height: window.getComputedStyle(sb, null).height
+			}
+		});
 
 		//window.setTimeout(function(){
 		// add the spacer; take the subreddit bar out of the header and put it above
@@ -1703,20 +1456,19 @@ Modules.voatingBooth = {
 };
 
 (function() {
-	var VES;
 
 	/**
 		VES needs to go through and first load ALL of the modules' defaults in order
 		to make sure that no new options (after an update) are left out of storage.
 		This will also account for when VES is run for the first time.
-		After all the defaults are loaded, $.extend the loaded defaults and replace
+		After all the defaults are loaded, extend the loaded defaults and replace
 		all the values with whatever the user's settings are (from localStorage).
 		THEN we can start preloading the modules and running them.
 	**/
 
 	testLocalStorage();
 
-	VES = { // for the extension itself
+	var VES = { // for the extension itself
 		init: function() {
 			Utils.resetModulePrefs();
 
@@ -1730,12 +1482,12 @@ Modules.voatingBooth = {
 			*/
 
 			// load a user's saved settings
-			return $.get(Storage, function(items) { // get saved Settings
+			return get(Storage, function(items) { // get saved Settings
 				// extend and replace the loaded defaults
-				$.extend(Storage, items);
+				extend(Storage, items);
 
 				// start loading the modules once <head> can be found
-				return $.asap((function() {
+				return asap((function() {
 					return doc.head;
 				}), VES.loadModules);
 			});
@@ -1752,7 +1504,7 @@ Modules.voatingBooth = {
 			}
 			// run the modules' .go() function ASAP
 			// often, the document body is not available yet, so wait
-			$.asap((function() {
+			asap((function() {
 				return doc.body;
 			}), function() {
 				for (module in Modules) {
@@ -1767,7 +1519,7 @@ Modules.voatingBooth = {
 				}
 			});
 			// inject the CSS from all the modules
-			$.addStyle(Utils.css, 'VESStyles');
+			Utils.applyCSS(Utils.css, 'VESStyles');
 		}
 	};
 	VES.init();

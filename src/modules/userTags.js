@@ -48,7 +48,7 @@ Modules.userTags = {
 			thisIgnore = null,
 			thisAuthor, thisPost, thisComment;
 
-		if ((authorObj) && (!($.hasClass(authorObj, 'userTagged'))) && (typeof authorObj !== 'undefined') && (authorObj !== null)) {
+		if ((authorObj) && (!($(authorObj).hasClass('userTagged'))) && (typeof authorObj !== 'undefined') && (authorObj !== null)) {
 			if (authorObj.getAttribute('data-username')) {
 				thisAuthor = authorObj.getAttribute('data-username');
 			}
@@ -59,7 +59,7 @@ Modules.userTags = {
 			}
 			thisAuthor = thisAuthor.toLowerCase();
 			if (!noTag) {
-				$.addClass(authorObj, 'userTagged');
+				$(authorObj).addClass('userTagged');
 				if (typeof userObject[thisAuthor] === 'undefined') {
 					if (this.tags && this.tags[thisAuthor]) {
 						if (typeof this.tags[thisAuthor].tag !== 'undefined') {
@@ -78,12 +78,12 @@ Modules.userTags = {
 						ignore: thisIgnore,
 					};
 				}
-				var tag = $.el('span', {
+				var tag = el('span', {
 					className: 'VESUserTag',
 					alt: thisAuthor,
 					textContent: '+'
 				});
-				$.after(authorObj, tag);
+				after(authorObj, tag);
 			}
 		}
 	},

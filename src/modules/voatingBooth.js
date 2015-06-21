@@ -46,10 +46,10 @@ Modules.voatingBooth = {
 			}
 			switch (this.options.pinHeader.value) {
 				case 'header':
-					$.addClass(doc.body, 'pinHeader-header');
+					$(doc.body).addClass('pinHeader-header');
 					break;
 				case 'sub':
-					$.addClass(doc.body, 'pinHeader-sub');
+					$(doc.body).addClass('pinHeader-sub');
 					break;
 				default:
 					break;
@@ -71,18 +71,18 @@ Modules.voatingBooth = {
 		}
 	},
 	pinHeader: function() {
-		var header = $.id('header');
+		var header = id('header');
 		if (header === null) {
 			return;
 		}
 
-		var spacer = $.el('div');
+		var spacer = el('div');
 		spacer.id = 'VESPinnedHeaderSpacer';
 
 		var css = '#sr-header-area { left: 0; right: 0 }';
 		spacer.style.height = $('#header').outerHeight() + 'px';
 
-		$.before(header.nextSibling, spacer);
+		before(header.nextSibling, spacer);
 
 		css += 'body > #container { margin-top: 10px }';
 		css += '#header { position: fixed }';
@@ -95,17 +95,20 @@ Modules.voatingBooth = {
 	pinSubverseBar: function() {
 		// Make the subverse bar at the top of the page a fixed element
 
-		var sb = $.id('sr-header-area');
+		var sb = id('sr-header-area');
 		if (sb === null) {
 			return;
 		}
-		var header = $.id('header');
+		var header = id('header');
 
 		// add a dummy <div> inside the header to replace the subreddit bar (for spacing)
-		var spacer = $.el('div');
-		spacer.style.paddingTop = window.getComputedStyle(sb, null).paddingTop;
-		spacer.style.paddingBottom = window.getComputedStyle(sb, null).paddingBottom;
-		spacer.style.height = window.getComputedStyle(sb, null).height;
+		var spacer = el('div', {
+			style: {
+				paddingTop: window.getComputedStyle(sb, null).paddingTop,
+				paddingBottom: window.getComputedStyle(sb, null).paddingBottom,
+				height: window.getComputedStyle(sb, null).height
+			}
+		});
 
 		//window.setTimeout(function(){
 		// add the spacer; take the subreddit bar out of the header and put it above

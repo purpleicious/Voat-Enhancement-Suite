@@ -99,7 +99,7 @@ Modules.searchHelper = {
 		}
 	},
 	searchSubverseByDefault: function() {
-		var restrictSearch = j('form[action="/search"] > input#l');
+		var restrictSearch = $('form[action="/search"] > input#l');
 		if (restrictSearch && !$('meta[content="search results"]', doc.head)) { // prevent autochecking after searching with it unchecked
 			restrictSearch.checked = true;
 		}

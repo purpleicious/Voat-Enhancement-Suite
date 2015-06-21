@@ -1,18 +1,17 @@
 (function() {
-	var VES;
 
 	/**
 		VES needs to go through and first load ALL of the modules' defaults in order
 		to make sure that no new options (after an update) are left out of storage.
 		This will also account for when VES is run for the first time.
-		After all the defaults are loaded, $.extend the loaded defaults and replace
+		After all the defaults are loaded, extend the loaded defaults and replace
 		all the values with whatever the user's settings are (from localStorage).
 		THEN we can start preloading the modules and running them.
 	**/
 
 	testLocalStorage();
 
-	VES = { // for the extension itself
+	var VES = { // for the extension itself
 		init: function() {
 			Utils.resetModulePrefs();
 
@@ -26,12 +25,12 @@
 			*/
 
 			// load a user's saved settings
-			return $.get(Storage, function(items) { // get saved Settings
+			return get(Storage, function(items) { // get saved Settings
 				// extend and replace the loaded defaults
-				$.extend(Storage, items);
+				extend(Storage, items);
 
 				// start loading the modules once <head> can be found
-				return $.asap((function() {
+				return asap((function() {
 					return doc.head;
 				}), VES.loadModules);
 			});
@@ -48,7 +47,7 @@
 			}
 			// run the modules' .go() function ASAP
 			// often, the document body is not available yet, so wait
-			$.asap((function() {
+			asap((function() {
 				return doc.body;
 			}), function() {
 				for (module in Modules) {
@@ -63,7 +62,7 @@
 				}
 			});
 			// inject the CSS from all the modules
-			$.addStyle(Utils.css, 'VESStyles');
+			Utils.applyCSS(Utils.css, 'VESStyles');
 		}
 	};
 	VES.init();

@@ -177,47 +177,5 @@ $.extend(Utils, {
 		}
 		this.getOptionsFirstRun[moduleID] = true;
 		return Modules[moduleID].options;
-	},
-	/*getOptions: function(moduleID) {
-		//console.log("getting options for " + moduleID);
-		var thisOptions = localStorage.getItem('VESOptions.' + moduleID);
-		//console.log("thisOptions = " + thisOptions);
-		var currentTime = new Date();
-		if ((thisOptions) && (thisOptions != 'undefined') && (thisOptions !== null)) {
-			storedOptions = JSON.parse(thisOptions);
-			codeOptions = Modules[moduleID].options;
-			for (var attrname in codeOptions) {
-				if (typeof(storedOptions[attrname]) == 'undefined') {
-					storedOptions[attrname] = codeOptions[attrname];
-				}
-			}
-			Modules[moduleID].options = storedOptions;
-			localStorage.setItem('VESOptions.' + moduleID, JSON.stringify(Modules[moduleID].options));
-		} else {
-			//console.log('getOptions: setting defaults');
-			// nothing's been stored, so set defaults:
-			localStorage.setItem('VESOptions.' + moduleID, JSON.stringify(Modules[moduleID].options));
-		}
-		//console.log('getOptions: returning options for ' + moduleID);
-		return Modules[moduleID].options;
-	}, */
-	"export": function() {
-		var settings = Storage;
-		return $.get(settings, function(settings) {
-			return Settings.downloadExport('Settings', {
-				version: info.version,
-				date: Date.now(),
-				settings: settings
-			});
-		});
-	},
-	downloadExport: function(title, data) {
-		var a = $.el('a', { // craft a link
-			download: 'VES v' + info.version + ' ' + title + '.' + data.date + '.json',
-			href: "data:application/json;base64," + (btoa(unescape(encodeURIComponent(JSON.stringify(data, null, 2)))))
-		});
-		$.add(doc.body, a);
-		a.click();  // force clicking the download link
-		return $.rm(a); // remove the download link
 	}
 });

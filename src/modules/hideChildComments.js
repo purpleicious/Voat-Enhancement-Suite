@@ -23,8 +23,8 @@ Modules.hideChildComments = {
 	go: function() {
 		if ((this.isEnabled()) && (this.isMatchURL())) {
 			// begin creating the OP's 'hide child comments' button
-			var toggleButton = $.el('li');
-			this.toggleAllLink = $.el('a', {
+			var toggleButton = el('li');
+			this.toggleAllLink = el('a', {
 				textContent: 'hide all child comments',
 				href: '#',
 				title: 'Show only replies to original poster.',
@@ -43,7 +43,7 @@ Modules.hideChildComments = {
 					this.textContent = 'hide all child comments';
 				}
 			}, true);
-			$.add(toggleButton, this.toggleAllLink);
+			add(toggleButton, this.toggleAllLink);
 			var commentMenu = doc.querySelector('ul.buttons');
 			if (commentMenu) {
 				// add the post's toggle
@@ -53,8 +53,8 @@ Modules.hideChildComments = {
 				var rootComments = doc.querySelectorAll('div.commentarea > div.sitetable > div.thread');
 				// for every root comment add a hide child elements link
 				for (var i = 0, len = rootComments.length; i < len; i++) {
-					toggleButton = $.el('li');
-					var toggleLink = $.el('a', {
+					toggleButton = el('li');
+					var toggleLink = el('a', {
 						textContent: 'hide child comments',
 						href: '#',
 						className: 'toggleChildren'
@@ -64,7 +64,7 @@ Modules.hideChildComments = {
 						e.preventDefault();
 						Modules.hideChildComments.toggleComments(this.getAttribute('action'), this);
 					}, true);
-					$.add(toggleButton, toggleLink);
+					add(toggleButton, toggleLink);
 					//console.log('toggleButton: ' + typeof(toggleButton));
 					// get the first (if any) comment of the root
 					var childComment = rootComments[i].querySelector('.child');
@@ -87,7 +87,7 @@ Modules.hideChildComments = {
 	toggleComments: function(action, obj) {
 		var commentContainers;
 		if (obj) { // toggle a single comment tree
-			commentContainers = j(obj).closest('.thread');
+			commentContainers = $(obj).closest('.thread');
 		} else { // toggle all comments
 			cli.log('Hiding all child comments...');
 			commentContainers = doc.querySelectorAll('div.commentarea > div.sitetable > div.thread');
@@ -104,11 +104,11 @@ Modules.hideChildComments = {
 				for (var x = 0, y = thisChildren.length; x < y; x++) {
 					if (action === 'hide') {
 						// Voat's already got a .hidden class, use that
-						$.addClass(thisChildren[x], 'hidden');
+						$(thisChildren[x]).addClass('hidden');
 						thisToggleLink.innerHTML = 'show child comments';
 						thisToggleLink.setAttribute('action', 'show');
 					} else {
-						$.rmClass(thisChildren[x], 'hidden');
+						$(thisChildren[x]).removeClass('hidden');
 						thisToggleLink.innerHTML = 'hide child comments';
 						thisToggleLink.setAttribute('action', 'hide');
 					}

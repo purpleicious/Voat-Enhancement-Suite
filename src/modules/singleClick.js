@@ -59,23 +59,23 @@ Modules.singleClick = {
 	},
 	applyLinks: function(ele) {
 		ele = ele || doc;
-		var entries = $$('.sitetable>.submission .entry', ele); // beware of .alert-featuredsub!
+		var entries = $('.sitetable>.submission .entry', ele); // beware of .alert-featuredsub!
 		for (var i = 0, len = entries.length; i < len; i++) {
 			if ((typeof entries[i] !== 'undefined') && (!entries[i].classList.contains('lcTagged'))) {
-				$.addClass(entries[i], 'lcTagged');
-				this.titleLA = $('A.title', entries[i]);
+				entries[i].className += 'lcTagged';
+				this.titleLA = entries[i].querySelector('A.title');
 				if (this.titleLA !== null) {
-					var thisLink = this.titleLA.href;
+					var thisLink = $(this.titleLA).attr('href');
 					// check if it's a relative path (no http://)
 					if (!(thisLink.match(/^http/i))) {
-						thisLink = 'http://' + document.domain + thisLink;
+						thisLink = 'http://' + doc.domain + thisLink;
 					}
 					//console.log("thisLink -- " + thisLink);
 					var thisComments = (thisComments = entries[i].querySelector('.comments')) && thisComments.href;
 					//console.log("thisComments -- " + thisComments);
 					var thisUL = $('ul.flat-list', entries[i]);
-					var singleClickLI = $.el('li');
-					var singleClickLink = $.el('a', {
+					var singleClickLI = el('li');
+					var singleClickLink = el('a', {
 						className: 'VESSingleClick'
 					});
 					singleClickLink.setAttribute('thisLink',thisLink);
@@ -85,8 +85,8 @@ Modules.singleClick = {
 					} else if (!(this.options.hideLEC.value)) {
 						singleClickLink.innerHTML = '[l=c]';
 					}
-					$.add(singleClickLI, singleClickLink);
-					$.add(thisUL, singleClickLI);
+					add(singleClickLI, singleClickLink);
+					add(thisUL, singleClickLI);
 					singleClickLink.addEventListener('click', function(e) {
 						e.preventDefault();
 						if(e.button != 2) {
