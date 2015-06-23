@@ -1179,7 +1179,7 @@ Modules.singleClick = {
 					var thisLink = $(this.titleLA).attr('href');
 					// check if it's a relative path (no http://)
 					if (!(thisLink.match(/^http/i))) {
-						thisLink = 'http://' + doc.domain + thisLink;
+						thisLink = 'https://' + doc.domain + thisLink;
 					}
 					//console.log("thisLink -- " + thisLink);
 					var thisComments = (thisComments = entries[i].querySelector('.comments')) && thisComments.href;
