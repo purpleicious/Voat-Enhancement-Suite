@@ -45,7 +45,7 @@ Modules.debug = {
 			asap((function() {
 				return doc.body;
 			}), function() {
-				var footer = $('.footer div', doc);
+				var footer = $('.footer-container > .footer > div', doc);
 				add(footer, separator);
 				add(footer, link);
 			});
