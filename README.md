@@ -12,7 +12,7 @@ A few things:
 
 - Ideas and code are both welcome contributions.
 - VES bugs interfering with Voat may be common (or uncommon) depending on many factors.
-- VES's source code is split into two main branches. `master` is the most stable branch, and `dev` is where new features are added and tested. Before installing from `dev`, understand that it may be broken.
+- VES's source code is split into two main branches. `master` is the most stable branch, and `dev` is where new features are added and tested. Before installing from `dev`, understand that it may be broken. *Do not* install from `dev-stage`.
 
 Regardless of VES performance, I hope you enjoy it.
 
@@ -31,7 +31,8 @@ Above all, any contributions to VES will be graciously credited!
 3. Fork VES on GitHub.
 4. Create a topic branch based on the `dev` branch.
 	- Avoid changing the `master` branch as it likely will not reflect the current state of VES.
-	- To get going quickly: `git checkout -b dev/my-feature dev` to create a branch `dev/my-feature` based on `dev`
+        - Please ignore the `dev-stage` branch&ndash;these commits are likely untested and not yet worthy of `dev`.
+	- To get going quickly: `git checkout -b dev/my-feature dev` to create a branch named `dev/my-feature` based on `dev`
 5. Install & update all of VES's dependencies using `npm install`.
 6. Build the full script with `grunt`.
 	- Build continuously with `grunt watch`.
@@ -54,6 +55,10 @@ VES should be compatible across all operating systems and most userscript implem
 	1. Install `Greasemonkey`,
 	2. Restart Firefox.
 2. Install VES.
+
+#### Safari
+
+VES is reported to work on Safari with Tampermonkey, but has not been tested officially.
 
 ## [Download][dl]
 
