@@ -1,39 +1,29 @@
 (function() {
 
-	/**
-		VES needs to go through and first load ALL of the modules' defaults in order
-		to make sure that no new options (after an update) are left out of storage.
-		This will also account for when VES is run for the first time.
-		After all the defaults are loaded, extend the loaded defaults and replace
-		all the values with whatever the user's settings are (from localStorage).
-		THEN we can start preloading the modules and running them.
-	**/
-
+	// see if we can access anything
 	testLocalStorage();
 
 	var VES = { // for the extension itself
 		init: function() {
-			Utils.resetModulePrefs();
+			this.loadOptions();
 
-			/*
-				This is where we load options. To make sure we get everything,
-				check the saved configs and see if we're running a newer version
-				of VES than we had previously. If it's newer, load the old
-				stuff, extend it with the new, and load the old stuff again.
-				Then look at the defaults for the list of all modules, and load
-				them if the user has them enabled.
-			*/
+			// start loading the modules once <head> can be found
+			asap((function() {
+				return doc.head;
+			}), this.loadModules);
 
-			// load a user's saved settings
-			return get(Storage, function(items) { // get saved Settings
-				// extend and replace the loaded defaults
-				extend(Storage, items);
-
-				// start loading the modules once <head> can be found
-				return asap((function() {
-					return doc.head;
-				}), VES.loadModules);
-			});
+			asap((function() {
+				return doc.body;
+			}), Options.addOptionsLink);
+		},
+		loadOptions: function() {
+			var module;
+			for (module in Modules) {
+				if (typeof Modules[module] === 'object') {
+					//cli.log('Running loadOptions('+module+')');
+					Options.getOptions(module);
+				}
+			}
 		},
 		loadModules: function() {
 			var module;

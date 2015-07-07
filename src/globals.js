@@ -1,8 +1,8 @@
 var info = {
-	v: '0.0.3',
-	namespace: 'VES.',
-	name: 'Voat Enhancement Suite',
-	abbr: 'VES'
+	v: '<%= meta.version %>',
+	namespace: '<%= meta.abbr %>.',
+	name: '<%= meta.name %>',
+	abbr: '<%= meta.abbr %>'
 };
 
 
@@ -24,24 +24,15 @@ if (typeof(unsafeWindow) !== 'undefined') {
 	global utils
 */
 
-// create a JSON from key/val pair
+// create JSON data from key/val pair
 item = function(key, val) {
 	var item = {};
 	item[key] = val;
 	return item;
 };
 
-// add (with replacement) a JSON of properties to an object
-extend = function(obj, props) {
-	for (var key in props) {
-		val = props[key];
-		obj[key] = val;
-	}
-};
-
 // wait until test can be done and then perform a callback
 asap = function(test, callback) {
-	// if test CAN be done perform the callback
 	if (test()) {
 		return callback();
 	} else {
@@ -58,7 +49,7 @@ el = function(tag, props) {
 	var el = doc.createElement(tag);
 	// if a JSON of properties is passed in, apply them
 	if (props) {
-		extend(el, props);
+		$.extend(el, props);
 	}
 	return el;
 };
@@ -166,7 +157,7 @@ safeJSON = function(data, storageSource, silent) {
 		if (storageSource) {
 			cli.error('Error caught: JSON parse fail on \'' + data + '\' from ' + storageSource);
 			//cli.error('Storing and deleting corrupt data.');
-			GM_setValue(storageSource + '.error', data);
+			set(storageSource + '.error', data);
 		} else {
 			cli.error('Error caught: JSON parse failed on: ' + data);
 		}
@@ -196,4 +187,4 @@ var KEY = {
 
 var Utils = {};
 
-var Modules = {};
+var Modules = [];

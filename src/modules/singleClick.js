@@ -1,5 +1,5 @@
 Modules.singleClick = {
-	moduleID: 'singleClick',
+	module: 'singleClick',
 	moduleName: 'Single Click',
 	description: 'Adds an [l+c] link that opens both the link and the comments page in new tabs.',
 	options: {
@@ -17,12 +17,9 @@ Modules.singleClick = {
 			value: false,
 			description: 'Hide the [l=c] where the link is the same as the comments page'
 		}
-		// new options format:
-		//'Open Order': ['commentsfirst', 'The order to open the link and comments.' ['commentsfirst', 'linkfirst']],
-		//'Hide [l=c]': [false, 'Hide the [l=c] on self/text posts']
 	},
 	isEnabled: function() {
-		return Utils.getModulePrefs(this.moduleID);
+		return Options.getModulePrefs(this.module);
 	},
 	include: [
 		'all',
@@ -31,7 +28,7 @@ Modules.singleClick = {
 		'comments',
 	],
 	isMatchURL: function() {
-		return Utils.isMatchURL(this.moduleID);
+		return Utils.isMatchURL(this.module);
 	},
 	beforeLoad: function() {
 		if ((this.isEnabled()) && (this.isMatchURL())) {

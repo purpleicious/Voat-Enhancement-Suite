@@ -22,28 +22,27 @@ Utils = {
 	},
 
 	regexes: {
-		all: /^https?:\/\/(?:[\-\w\.]+\.)?voat\.co\//i,
-		inbox: /^https?:\/\/(?:[\-\w\.]+\.)?voat\.co\/messaging\/([\w\.\+]+)\//i,
-		comments: /^https?:\/\/(?:[\-\w\.]+\.)?voat\.co\/v\/([\w\.\+]+)\/comments\/([\w\.\+]+)/i,
-		//commentPermalink:
+		commentPermalink: /^https?:\/\/(?:[\-\w\.]+\.)?voat\.co\/v\/([\w\.\+]+)\/comments\/([0-9]+)\/([0-9]+)/i,
 		profile: /^https?:\/\/(?:[\-\w\.]+\.)?voat\.co\/user\/([\w\.\+]+)/i,
-		//prefs:
+		prefs: /^https?:\/\/(?:[\-\w\.]+\.)?voat\.co\/account\/manage/i,
 		//search:
 		submit: /^https?:\/\/(?:[\-\w\.]+\.)?voat\.co\/(?:[\-\w\.]+\/)?submit/i,
 		subverse: /^https?:\/\/(?:[\-\w\.]+\.)?voat\.co\/v\/([\w\.\+]+)/i,
-		//subversePostListing:
+		subversePostListing: /^https?:\/\/(?:[\-\w\.]+\.)?voat\.co\/v\/([\w\.\+]+)(?:\/(new|rising|controversial|top))?\/?(?:\?.*)?$/i,
+		subverseSettings:  /^https?:\/\/(?:[\-\w\.]+\.)?voat.co\/(?:v\/[\-\w\.]+\/)?about\/edit/i,
+		api: /^https?:\/\/(?:[\-\w\.]+\.)?voat.co\/api\//i
 	},
 	isVoat: function() {
 		var currURL = location.href;
 		return Utils.regexes.all.test(currURL);
 	},
-	isMatchURL: function(moduleID) {
+	isMatchURL: function(module) {
 		if (!Utils.isVoat()) {
 			return false;
 		}
-		var module = Modules[moduleID];
+		var module = Modules[module];
 		if (!module) {
-			console.warn("isMatchURL could not find module", moduleID);
+			console.warn("isMatchURL could not find module", module);
 			return false;
 		}
 
@@ -61,6 +60,7 @@ Utils = {
 			return includesPageType;
 		}
 	},
+	//pageTypeSaved,
 	pageType: function() {
 		if (typeof this.pageTypeSaved === 'undefined') {
 			var pageType = '';
@@ -75,6 +75,10 @@ Utils = {
 				pageType = 'submit';
 			} else if (Utils.regexes.subverse.test(currURL)) {
 				pageType = 'subverse';
+			} else if (Utils.regexes.prefs.test(currURL)) {
+				pageType = 'prefs';
+			} else if (Utils.regexes.api.test(currURL)) {
+				pageType = 'api';
 			} else {
 				pageType = 'linklist';
 			}
@@ -103,10 +107,10 @@ Utils = {
 		return result;
 	},
 	currentSubverse: function(check) {
-		if (typeof this.curSub === 'undefined') {
+		if (typeof this.currSub === 'undefined') {
 			var match = location.href.match(Utils.regexes.subverse);
 			if (match !== null) {
-				this.curSub = match[1];
+				this.currSub = match[1];
 				if (check) return (match[1].toLowerCase() === check.toLowerCase());
 				return match[1];
 			} else {
@@ -114,8 +118,34 @@ Utils = {
 				return null;
 			}
 		} else {
-			if (check) return (this.curSub.toLowerCase() === check.toLowerCase());
-			return this.curSub;
+			if (check) return (this.currSub.toLowerCase() === check.toLowerCase());
+			return this.currSub;
+		}
+	},
+	sortType: function() { // hot, new, top
+		if (typeof this.sortTypeCached === 'undefined') {
+			// TODO
+		}
+		return this.sortTypeCached;
+	},
+	subverseForElement: function(element) {
+		var submission = $(element).closest('.submission');
+		if (!submission.length) return;
+
+		var subverseElement = submission.find('.subverse');
+
+		if (!subverseElement.length) {
+			subverseElement = submission.find('.tagline a').filter(function() {
+				return Utils.regexes.subverse.test(this.href);
+			});
+		}
+
+		if (subverseElement.length) {
+			subverseElement = $('.sitetable .link .subverse');
+		}
+
+		if (subverseElement.length) {
+			return subverseElement[0].href.match(Utils.regexes.subverse)[1];
 		}
 	},
 	getXYpos: function (obj) {
@@ -127,6 +157,25 @@ Utils = {
 		}
 		finalvalue = { 'x': leftValue, 'y': topValue };
 		return finalvalue;
+	},
+	getHeaderOffset: function() {
+		if (typeof(this.headerOffset) == 'undefined') {
+			this.headerOffset = 0;
+			switch (Modules.voatingBooth.options.pinHeader.value) {
+				case 'none':
+					break;
+				case 'sub':
+					this.theHeader = document.querySelector('#sr-header-area');
+					break;
+				case 'header':
+					this.theHeader = document.querySelector('#header');
+					break;
+			}
+			if (this.theHeader) {
+				this.headerOffset = this.theHeader.offsetHeight + 6;
+			}
+		}
+		return this.headerOffset;
 	},
 	elementInViewport: function (obj) {
 		// check the headerOffset - if we've pinned the subverse bar, we need to add some pixels so the "visible" stuff is lower down the page.
@@ -184,15 +233,8 @@ Utils = {
 	isDarkMode: function() {
 		// check if isDarkMode has been run already
 		if (typeof(this.isDarkModeCached) != 'undefined') return this.isDarkModeCached;
-		// search the VES stylesheet link URL for 'Dark'
 
-		this.isDarkModeCached = false;
-		var links = $('link');
-		for (var i = 0, len = links.length; i < len; i++) {
-			if (links[i].href.indexOf('Dark') > -1) {
-				this.isDarkModeCached = true;
-			}
-		}
+		this.isDarkModeCached = $('body').hasClass('dark');
 		return this.isDarkModeCached;
 	},
 };

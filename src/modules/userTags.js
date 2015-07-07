@@ -1,5 +1,5 @@
 Modules.userTags = {
-	moduleID: 'userTags',
+	module: 'userTags',
 	moduleName: 'User Tags',
 	category: 'Users',
 	description: 'Tag Voat users in posts and comments.',
@@ -9,14 +9,12 @@ Modules.userTags = {
 			value: false,
 			description: 'When on, the ignored user\'s entire post is hidden, not just the title.'
 		}
-		// new options format:
-		//'Hard Ignore': [false, 'When on, the ignored user\'s entire post is hidden, not just the title.'],
 	},
 	isEnabled: function() {
-		return Utils.getModulePrefs(this.moduleID);
+		return Options.getModulePrefs(this.module);
 	},
 	isMatchURL: function() {
-		return Utils.isMatchURL(this.moduleID);
+		return Utils.isMatchURL(this.module);
 	},
 	include: [
 		'all',

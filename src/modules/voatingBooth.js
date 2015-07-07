@@ -1,5 +1,5 @@
 Modules.voatingBooth = {
-	moduleID: 'voatingBooth',
+	module: 'voatingBooth',
 	moduleName: 'Voating Booth',
 	description: 'UI enhancements for Voat.',
 	options: {
@@ -23,18 +23,15 @@ Modules.voatingBooth = {
 			value: 'none',
 			description: 'Pin header elements to the page top, even when scrolling.'
 		}
-		// new options format:
-		//'Full Voat': [false, 'Make Voat use the device\'s full width'],
-		//'Pin Header': ['none', 'Pin Voat elements to the page top when scrolling.', ['none', 'sub', 'header']]
 	},
 	include: [
 		'all'
 	],
 	isEnabled: function() {
-		return Utils.getModulePrefs(this.moduleID);
+		return Utils.getModulePrefs(this.module);
 	},
 	isMatchURL: function() {
-		return Utils.isMatchURL(this.moduleID);
+		return Utils.isMatchURL(this.module);
 	},
 	beforeLoad: function() {
 		if ((this.isEnabled()) && (this.isMatchURL())) {

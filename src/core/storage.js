@@ -39,36 +39,34 @@ if ((typeof GM_deleteValue == 'undefined') || (typeof GM_addStyle == 'undefined'
 	// GM_xmlhttpRequest
 }
 
-// get values out of GM/localStorage, and perform an
-// action using them with the callback. 'items' (whatever matches 'key')
-// can be used as the argument in the callback.
+// get values from storage and perform a callback with them
 get = function(key, val, callback) {
 // OR function(key, callback), if val isn't specified
-	var items;
-	// if val is specified then we're looking for the specific instance of
-	// 'key' with value 'val'
-	if (typeof callback === 'function') {
-		items = item(key, val);
-	} else { // if val isn't specified get every entry with the key
-		items = key;
+// OR function(key, val), if val isn't a function
+// OR function(key)
+	var data; // the data that's found
+
+	// if val is specified use it as a fallback/default
+	if ((typeof callback === 'function') || (typeof val !== 'function')) {
+		data = GM_getValue(key, val);
+	} else {
 		callback = val;
+		data = GM_getValue(key);
 	}
 
-	// perform the callback
-	for (key in items) {
-		val = GM_getValue(info.namespace + key);
-		if (val) {
-			items[key] = JSON.parse(val);
-		}
+	if (data) {
+		// if something was found parse it
+		//data = safeJSON(data);
 	}
-	return callback(items);
+	// perform the specified callback
+	if (callback) return callback(data);
+	return data;
 };
 
-// set values to GM/localStorage.
+// set values to GM/localStorage
 set = (function() {
 	var set = function(key, val) {
-		key = info.namespace + key; // 'key' -> 'VES.key'
-		val = JSON.stringify(val);
+		//val = JSON.stringify(val);
 		return GM_setValue(key, val);
 	};
 	// this is the actual definition of set():
@@ -94,7 +92,6 @@ _delete = function(keys) {
 	// delete each key:
 	for (var i = 0, len = keys.length; i < len; i++) {
 		var key = keys[i];
-		key = info.namespace + key; // 'key' -> 'VES.key'
 		// purge the key's data
 		localStorage.removeItem(key);
 		GM_deleteValue(key);
@@ -114,6 +111,8 @@ function testLocalStorage() {
 	}
 
 	if (!(accessible)) {
-		cli.error('Browser storage is unavailable. Are you in a private session?');
+		cli.err('localStorage is unavailable. Are you in a private session?');
+		cli.warn('VES will run using sessionStorage (no changes will persist).');
+		localStorage = sessionStorage || unsafeWindow.sessionStorage;
 	}
 }

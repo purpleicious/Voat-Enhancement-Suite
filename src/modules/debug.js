@@ -1,5 +1,5 @@
 Modules.debug = {
-	moduleID: 'debug',
+	module: 'debug',
 	moduleName: 'VES Debugger',
 	description: 'VES analytics for debugging.',
 	options: {
@@ -8,30 +8,26 @@ Modules.debug = {
 			value: true,
 			description: 'Print system information (OS & browser) to the console. Helps when submitting bug reports.'
 		},
-		printLocalStorage: {
+		printStorage: {
 			type: 'boolean',
 			value: false,
-			description: 'Print the contents of localStorage to the console on every page load.'
+			description: 'Print the contents of storage to the console on every page load.'
 		},
-		// new options format:
-		//'Log System Info': [true, 'Print system information to the console. Helps when submitting bug reports.'],
-		//'Print localStorage': [true, 'Print the contents of localStorage to the console on each page.']
 	},
+	alwaysEnabled: true,
 	isEnabled: function() {
 		// technically cheating
 		return true;
 	},
-	include: [
-		'all'
-	],
 	isMatchURL: function() {
-		return Utils.isMatchURL(this.moduleID);
+		return Utils.isMatchURL(this.module);
 	},
 	go: function() {
 		if ((this.isEnabled()) && (this.isMatchURL())) {
 			cli.log('VES loaded: ' + Date());
 
 			this.printSystemInfos();
+			this.printStorage();
 
 			// add a link to VES in the footer
 			var separator = el('span', {
@@ -58,15 +54,17 @@ Modules.debug = {
 				'OS': System.OS,
 				'Browser': System.browser + ' ' + System.version
 			};
-			cli.log(JSON.stringify(json));
+			cli.log(json);
 		}
 	},
-	printLocalStorage: function() {
-		// this should probably go in Utils
-		cli.log('localStorage data...');
-		for (var key in localStorage) {
-			cli.log(key + ':');
-			cli.log(localStorage[key]);
+	printStorage: function() { // this should probably go in Utils
+		if (this.options.printSystemInfos) {
+			cli.log('HTML5 storage data...');
+			for (var key in localStorage) {
+				if (typeof localStorage[key] !== 'function') {
+					cli.log(key + ':', localStorage[key]);
+				}
+			}
 		}
 	}
 };

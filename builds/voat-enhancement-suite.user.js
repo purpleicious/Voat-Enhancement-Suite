@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name        Voat Enhancement Suite
-// @version     0.0.3
+// @version     0.0.4~alpha
 // @description A suite of tools to enhance Voat.
 // @namespace   http://tjg.io/Voat-Enhancement-Suite
 // @author      @travis <travisjgrammer@gmail.com>
@@ -19,7 +19,7 @@
 // ==/UserScript==
 
 var info = {
-	v: '0.0.3',
+	v: '0.0.4~alpha',
 	namespace: 'VES.',
 	name: 'Voat Enhancement Suite',
 	abbr: 'VES'
@@ -44,24 +44,15 @@ if (typeof(unsafeWindow) !== 'undefined') {
 	global utils
 */
 
-// create a JSON from key/val pair
+// create JSON data from key/val pair
 item = function(key, val) {
 	var item = {};
 	item[key] = val;
 	return item;
 };
 
-// add (with replacement) a JSON of properties to an object
-extend = function(obj, props) {
-	for (var key in props) {
-		val = props[key];
-		obj[key] = val;
-	}
-};
-
 // wait until test can be done and then perform a callback
 asap = function(test, callback) {
-	// if test CAN be done perform the callback
 	if (test()) {
 		return callback();
 	} else {
@@ -78,7 +69,7 @@ el = function(tag, props) {
 	var el = doc.createElement(tag);
 	// if a JSON of properties is passed in, apply them
 	if (props) {
-		extend(el, props);
+		$.extend(el, props);
 	}
 	return el;
 };
@@ -186,7 +177,7 @@ safeJSON = function(data, storageSource, silent) {
 		if (storageSource) {
 			cli.error('Error caught: JSON parse fail on \'' + data + '\' from ' + storageSource);
 			//cli.error('Storing and deleting corrupt data.');
-			GM_setValue(storageSource + '.error', data);
+			set(storageSource + '.error', data);
 		} else {
 			cli.error('Error caught: JSON parse failed on: ' + data);
 		}
@@ -216,7 +207,7 @@ var KEY = {
 
 var Utils = {};
 
-var Modules = {};
+var Modules = [];
 
 // GreaseMonkey API compatibility for non-GM browsers (Chrome, Safari, Firefox)
 // @copyright       2009, 2010 James Campos
@@ -259,36 +250,34 @@ if ((typeof GM_deleteValue == 'undefined') || (typeof GM_addStyle == 'undefined'
 	// GM_xmlhttpRequest
 }
 
-// get values out of GM/localStorage, and perform an
-// action using them with the callback. 'items' (whatever matches 'key')
-// can be used as the argument in the callback.
+// get values from storage and perform a callback with them
 get = function(key, val, callback) {
 // OR function(key, callback), if val isn't specified
-	var items;
-	// if val is specified then we're looking for the specific instance of
-	// 'key' with value 'val'
-	if (typeof callback === 'function') {
-		items = item(key, val);
-	} else { // if val isn't specified get every entry with the key
-		items = key;
+// OR function(key, val), if val isn't a function
+// OR function(key)
+	var data; // the data that's found
+
+	// if val is specified use it as a fallback/default
+	if ((typeof callback === 'function') || (typeof val !== 'function')) {
+		data = GM_getValue(key, val);
+	} else {
 		callback = val;
+		data = GM_getValue(key);
 	}
 
-	// perform the callback
-	for (key in items) {
-		val = GM_getValue(info.namespace + key);
-		if (val) {
-			items[key] = JSON.parse(val);
-		}
+	if (data) {
+		// if something was found parse it
+		//data = safeJSON(data);
 	}
-	return callback(items);
+	// perform the specified callback
+	if (callback) return callback(data);
+	return data;
 };
 
-// set values to GM/localStorage.
+// set values to GM/localStorage
 set = (function() {
 	var set = function(key, val) {
-		key = info.namespace + key; // 'key' -> 'VES.key'
-		val = JSON.stringify(val);
+		//val = JSON.stringify(val);
 		return GM_setValue(key, val);
 	};
 	// this is the actual definition of set():
@@ -314,7 +303,6 @@ _delete = function(keys) {
 	// delete each key:
 	for (var i = 0, len = keys.length; i < len; i++) {
 		var key = keys[i];
-		key = info.namespace + key; // 'key' -> 'VES.key'
 		// purge the key's data
 		localStorage.removeItem(key);
 		GM_deleteValue(key);
@@ -334,7 +322,9 @@ function testLocalStorage() {
 	}
 
 	if (!(accessible)) {
-		cli.error('Browser storage is unavailable. Are you in a private session?');
+		cli.err('localStorage is unavailable. Are you in a private session?');
+		cli.warn('VES will run using sessionStorage (no changes will persist).');
+		localStorage = sessionStorage || unsafeWindow.sessionStorage;
 	}
 }
 
@@ -451,28 +441,27 @@ Utils = {
 	},
 
 	regexes: {
-		all: /^https?:\/\/(?:[\-\w\.]+\.)?voat\.co\//i,
-		inbox: /^https?:\/\/(?:[\-\w\.]+\.)?voat\.co\/messaging\/([\w\.\+]+)\//i,
-		comments: /^https?:\/\/(?:[\-\w\.]+\.)?voat\.co\/v\/([\w\.\+]+)\/comments\/([\w\.\+]+)/i,
-		//commentPermalink:
+		commentPermalink: /^https?:\/\/(?:[\-\w\.]+\.)?voat\.co\/v\/([\w\.\+]+)\/comments\/([0-9]+)\/([0-9]+)/i,
 		profile: /^https?:\/\/(?:[\-\w\.]+\.)?voat\.co\/user\/([\w\.\+]+)/i,
-		//prefs:
+		prefs: /^https?:\/\/(?:[\-\w\.]+\.)?voat\.co\/account\/manage/i,
 		//search:
 		submit: /^https?:\/\/(?:[\-\w\.]+\.)?voat\.co\/(?:[\-\w\.]+\/)?submit/i,
 		subverse: /^https?:\/\/(?:[\-\w\.]+\.)?voat\.co\/v\/([\w\.\+]+)/i,
-		//subversePostListing:
+		subversePostListing: /^https?:\/\/(?:[\-\w\.]+\.)?voat\.co\/v\/([\w\.\+]+)(?:\/(new|rising|controversial|top))?\/?(?:\?.*)?$/i,
+		subverseSettings:  /^https?:\/\/(?:[\-\w\.]+\.)?voat.co\/(?:v\/[\-\w\.]+\/)?about\/edit/i,
+		api: /^https?:\/\/(?:[\-\w\.]+\.)?voat.co\/api\//i
 	},
 	isVoat: function() {
 		var currURL = location.href;
 		return Utils.regexes.all.test(currURL);
 	},
-	isMatchURL: function(moduleID) {
+	isMatchURL: function(module) {
 		if (!Utils.isVoat()) {
 			return false;
 		}
-		var module = Modules[moduleID];
+		var module = Modules[module];
 		if (!module) {
-			console.warn("isMatchURL could not find module", moduleID);
+			console.warn("isMatchURL could not find module", module);
 			return false;
 		}
 
@@ -490,6 +479,7 @@ Utils = {
 			return includesPageType;
 		}
 	},
+	//pageTypeSaved,
 	pageType: function() {
 		if (typeof this.pageTypeSaved === 'undefined') {
 			var pageType = '';
@@ -504,6 +494,10 @@ Utils = {
 				pageType = 'submit';
 			} else if (Utils.regexes.subverse.test(currURL)) {
 				pageType = 'subverse';
+			} else if (Utils.regexes.prefs.test(currURL)) {
+				pageType = 'prefs';
+			} else if (Utils.regexes.api.test(currURL)) {
+				pageType = 'api';
 			} else {
 				pageType = 'linklist';
 			}
@@ -532,10 +526,10 @@ Utils = {
 		return result;
 	},
 	currentSubverse: function(check) {
-		if (typeof this.curSub === 'undefined') {
+		if (typeof this.currSub === 'undefined') {
 			var match = location.href.match(Utils.regexes.subverse);
 			if (match !== null) {
-				this.curSub = match[1];
+				this.currSub = match[1];
 				if (check) return (match[1].toLowerCase() === check.toLowerCase());
 				return match[1];
 			} else {
@@ -543,8 +537,34 @@ Utils = {
 				return null;
 			}
 		} else {
-			if (check) return (this.curSub.toLowerCase() === check.toLowerCase());
-			return this.curSub;
+			if (check) return (this.currSub.toLowerCase() === check.toLowerCase());
+			return this.currSub;
+		}
+	},
+	sortType: function() { // hot, new, top
+		if (typeof this.sortTypeCached === 'undefined') {
+			// TODO
+		}
+		return this.sortTypeCached;
+	},
+	subverseForElement: function(element) {
+		var submission = $(element).closest('.submission');
+		if (!submission.length) return;
+
+		var subverseElement = submission.find('.subverse');
+
+		if (!subverseElement.length) {
+			subverseElement = submission.find('.tagline a').filter(function() {
+				return Utils.regexes.subverse.test(this.href);
+			});
+		}
+
+		if (subverseElement.length) {
+			subverseElement = $('.sitetable .link .subverse');
+		}
+
+		if (subverseElement.length) {
+			return subverseElement[0].href.match(Utils.regexes.subverse)[1];
 		}
 	},
 	getXYpos: function (obj) {
@@ -556,6 +576,25 @@ Utils = {
 		}
 		finalvalue = { 'x': leftValue, 'y': topValue };
 		return finalvalue;
+	},
+	getHeaderOffset: function() {
+		if (typeof(this.headerOffset) == 'undefined') {
+			this.headerOffset = 0;
+			switch (Modules.voatingBooth.options.pinHeader.value) {
+				case 'none':
+					break;
+				case 'sub':
+					this.theHeader = document.querySelector('#sr-header-area');
+					break;
+				case 'header':
+					this.theHeader = document.querySelector('#header');
+					break;
+			}
+			if (this.theHeader) {
+				this.headerOffset = this.theHeader.offsetHeight + 6;
+			}
+		}
+		return this.headerOffset;
 	},
 	elementInViewport: function (obj) {
 		// check the headerOffset - if we've pinned the subverse bar, we need to add some pixels so the "visible" stuff is lower down the page.
@@ -613,133 +652,89 @@ Utils = {
 	isDarkMode: function() {
 		// check if isDarkMode has been run already
 		if (typeof(this.isDarkModeCached) != 'undefined') return this.isDarkModeCached;
-		// search the VES stylesheet link URL for 'Dark'
 
-		this.isDarkModeCached = false;
-		var links = $('link');
-		for (var i = 0, len = links.length; i < len; i++) {
-			if (links[i].href.indexOf('Dark') > -1) {
-				this.isDarkModeCached = true;
-			}
-		}
+		this.isDarkModeCached = $('body').hasClass('dark');
 		return this.isDarkModeCached;
 	},
 };
 
-$.extend(Utils, {
+
+var OptionsContainer = '';
+var MenuItems = [];
+var OptionsPanels = [];
+Options = {
+	defaultPrefs: {
+		'debug': true,
+		'hideChildComments': true,
+		'singleClick': true,
+		'userTags': false,
+		'voatingBooth': false,
+		'voatingNeverEnds': false,
+	},
 	resetModulePrefs: function() {
-		prefs = {
-			'debug': true,
-			'hideChildComments': true,
-			'voatingNeverEnds': false,
-			'singleClick': true,
-			'searchHelper': false,
-			'filterVoat': false,
-			'userTags': false,
-			'voatingBooth': false
-		};
-		this.setModulePrefs(prefs);
-		return prefs;
+		this.setModulePrefs(this.defaultPrefs);
+		return this.defaultPrefs;
 	},
 	getAllModulePrefs: function(force) {
+		/*	getAllModulePrefs should only be run compeletely once, and then
+			it should return a cache of preferences (unless forced).	*/
 		var storedPrefs;
-		// don't repeat if it's been done already
+
+		// don't repeat if we've done this already
 		if ((!force) && (typeof(this.getAllModulePrefsCached) != 'undefined')) {
 			return this.getAllModulePrefsCached;
 		}
-		//console.log('entering getAllModulePrefs()...')
-		if (localStorage.getItem('VES.modulePrefs') !== null) {
-			storedPrefs = safeJSON(localStorage.getItem('VES.modulePrefs'));
-		} else {
-			//console.log('getAllModulePrefs: resetting stored prefs');
-			// first time VES has been run
-			storedPrefs = this.resetModulePrefs();
-		}
-		if (!storedPrefs) {
-			storedPrefs = {};
-		}
-		// create a JSON object to return all prefs
-		//console.log('getAllModulePrefs: creating prefs object');
+
+		// add our settings to the defaults, in case something new has been added
+		get('modulePrefs', function(items) {
+			$.extend(Options.defaultPrefs, items);
+		});
+		// cache our hybrid settings
+		storedPrefs = Options.defaultPrefs;
+		// save our settings to storage
+		this.setModulePrefs(storedPrefs);
+
+		// create an array to return all prefs
 		var prefs = {};
 		for (var module in Modules) {
 			if (storedPrefs[module]) {
+				// the module preferences had been cached, so look there
 				prefs[module] = storedPrefs[module];
 			} else if (!Modules[module].disabledByDefault && (storedPrefs[module] === null || module.alwaysEnabled)) {
-				// new module! ...or no preferences.
+				// the module's prefs weren't cached and it should be enabled
 				prefs[module] = true;
 			} else {
 				prefs[module] = false;
 			}
 		}
+
+		// cache the prefs so we won't have to pull them all again
 		this.getAllModulePrefsCached = prefs;
 		return prefs;
 	},
-	getModulePrefs: function(moduleID) {
-		if (moduleID) {
+	getModulePrefs: function(module) {
+		if (module) {
 			var prefs = this.getAllModulePrefs();
-			return prefs[moduleID];
+			return prefs[module];
 		} else {
 			alert('no module name specified for getModulePrefs');
 		}
 	},
 	setModulePrefs: function(prefs) {
 		if (prefs !== null) {
-			localStorage.setItem(info.namespace + 'modulePrefs', JSON.stringify(prefs));
+			set('modulePrefs', prefs);
 			return prefs;
 		} else {
-			alert('error - no prefs specified');
+			cli.error('setModulePrefs: no prefs specified');
 		}
 	},
-	getModuleIDsByCategory: function(category) {
-		var moduleList = Object.getOwnPropertyNames(Modules);
-
-		moduleList = moduleList.filter(function(moduleID) {
-			return !Modules[moduleID].hidden;
-		});
-		moduleList = moduleList.filter(function(moduleID) {
-			return [].concat(Modules[moduleID].category).indexOf(category) !== -1;
-		});
-		moduleList.sort(function(moduleID1, moduleID2) {
-			var a = Modules[moduleID1];
-			var b = Modules[moduleID2];
-
-			if (a.sort !== void 0 || b.sort !== void 0) {
-				var sortComparison = (a.sort || 0) - (b.sort || 0);
-				if (sortComparison !== 0) {
-					return sortComparison;
-				}
-			}
-
-			if (a.moduleName.toLowerCase() > b.moduleName.toLowerCase()) return 1;
-			return -1;
-		});
-
-		return moduleList;
-	},
-	enableModule: function(moduleID, onOrOff) {
-		var module = Modules[moduleID];
-		if (!module) {
-			console.warn('options.enableModule could not find module', moduleID);
-			return;
-		}
-		if (module.alwaysEnabled && !onOrOff) {
-			return;
-		}
-
-		var prefs = this.getAllModulePrefs(true);
-		prefs[moduleID] = !! onOrOff;
-		this.setModulePrefs(prefs);
-		if (typeof module.onToggle === 'function') {
-			Modules[moduleID].onToggle(onOrOff);
-		}
-	},
-	setOption: function(moduleID, optionName, optionValue) {
+	setOption: function(module, optionName, optionValue) {
 		if (/_[\d]+$/.test(optionName)) {
 			optionName = optionName.replace(/_[\d]+$/, '');
 		}
-		var thisOptions = this.getOptions(moduleID);
+		var thisOptions = this.getOptions(module);
 		if (!thisOptions[optionName]) {
-			console.warn('Could not find option', moduleID, optionName);
+			console.warn('Could not find option', module, optionName);
 			return false;
 		}
 
@@ -755,10 +750,10 @@ $.extend(Utils, {
 		}
 		thisOptions[optionName].value = saveOptionValue;
 		// save it to the object and to VESStorage
-		Utils.saveModuleOptions(moduleID, thisOptions);
+		Options.saveModuleOptions(module, thisOptions);
 		return true;
 	},
-	saveModuleOptions: function(moduleID, newOptions) {
+	saveModuleOptions: function(module, newOptions) {
 		function minify(obj) {
 			var min = {};
 			if (obj) {
@@ -771,45 +766,565 @@ $.extend(Utils, {
 			return min;
 		}
 		if (newOptions) {
-			Modules[moduleID].options = newOptions;
+			Modules[module].options = newOptions;
 		}
-	   localStorage.setItem(info.namespace + moduleID, JSON.stringify(minify(Modules[moduleID].options)));
+		set('options.' + module, minify(Modules[module].options));
+	},
+	enableModule: function(id, toState) {
+		var module = Modules[id];
+		if (!module) {
+			cli.warn('module not found', id);
+			return;
+		}
+		if (module.alwaysOn && !toState) {
+			return;
+		}
+
+		var prefs = this.getAllModulePrefs(true);
+		prefs[id] = !! toState;
+		this.setModulePrefs(prefs);
+		if (typeof module.onToggle === 'function') {
+			Modules[id].onToggle(toState);
+		}
 	},
 	getOptionsFirstRun: [],
-	getOptions: function(moduleID) {
-		if (this.getOptionsFirstRun[moduleID]) {
-			// we've already grabbed these out of localstorage, so modifications should be done in memory. just return that object.
-			return Modules[moduleID].options;
+	getOptions: function(module) {
+		//cli.log('Running getOptions(' + module + ')');
+		if (this.getOptionsFirstRun[module]) {
+			// we've gotten the module's options before
+			return Modules[module].options;
 		}
-		var thisOptions = localStorage.getItem('VESOptions.' + moduleID);
+		var thisOptions = get('options.' + module);
 		if ((thisOptions) && (thisOptions !== 'undefined') && (thisOptions !== null)) {
-			// merge options (in case new ones were added via code) and if anything has changed, update to localStorage
-			var storedOptions = safeJSON(thisOptions, 'VESoptions.' + moduleID);
-			var codeOptions = Modules[moduleID].options;
-			var newOption = false;
-			for (var attrname in codeOptions) {
-				codeOptions[attrname].default = codeOptions[attrname].value;
+			// merge options (in case new ones were added via code)
+			var storedOptions = thisOptions;
+			var moduleOptions = Modules[module].options;
+
+			// TODO replace this section with extend()?
+			var newOption = false; // track if there's a new option
+			for (var attrname in moduleOptions) {
+				moduleOptions[attrname].default = moduleOptions[attrname].value;
 				if (typeof storedOptions[attrname] === 'undefined') {
-					newOption = true;
+					newOption = true; // a new option was found
 				} else {
-					codeOptions[attrname].value = storedOptions[attrname].value;
+					moduleOptions[attrname].value = storedOptions[attrname].value;
 				}
 			}
-			Modules[moduleID].options = codeOptions;
+			// this modifies the module's options in memory
+			Modules[module].options = moduleOptions;
 			if (newOption) {
-				Utils.saveModuleOptions(moduleID);
+				Options.saveModuleOptions(module);
 			}
 		} else {
-			// nothing in localStorage, let's set the defaults...
-			Utils.saveModuleOptions(moduleID);
+			// there wasn't anything in storage about the module, so set defaults
+			Options.saveModuleOptions(module);
 		}
-		this.getOptionsFirstRun[moduleID] = true;
-		return Modules[moduleID].options;
+		// mark that we've run the module
+		this.getOptionsFirstRun[module] = true;
+		return Modules[module].options;
+	},
+
+	container: OptionsContainer,
+
+	// the two settings panels
+	ModulesPanel: el('div', { id: 'ModulesPanel', className: 'panel' }),
+	OptionsPanel: el('div', { id: 'OptionsPanel', className: 'panel' }),
+
+	create: function() {
+		cli.log('create options dialog...');
+		OptionsContainer = el('div', {
+			id: 'VESOptions',
+			className: 'modal'
+		});
+		OptionsHeader = el('div');
+		OptionsTitle = el('div', {
+			className: 'alert-title',
+			innerHTML: 'VES Options'
+		});
+		add(OptionsHeader, OptionsTitle);
+		var menuItems = new Array('Enable Modules', 'Module Options');
+		Menu = el('ul', { id: 'Menu' });
+		for (var item in menuItems) {
+			var thisMenuItem = el('li', {
+				innerHTML: menuItems[item],
+				id: menuItems[item] + ' Menu'
+			});
+			thisMenuItem.addEventListener('click', function(e) {
+				e.preventDefault();
+				Options.menuClick(this);
+			}, true);
+			add(Menu, thisMenuItem);
+		}
+		add(OptionsHeader, Menu);
+		add(OptionsContainer, OptionsHeader);
+
+		MenuItems = Menu.querySelectorAll('li');
+
+		OptionsContent = el('div', { id: 'OptionsContent' });
+		add(OptionsContainer, OptionsContent);
+
+		this.drawModulesPanel();
+		this.drawOptionsPanel();
+
+		OptionsPanels = OptionsContent.querySelectorAll('div');
+		$(doc.body).append(OptionsContainer);
+	},
+	drawModulesPanel: function() {
+		cli.log('drawing modules panel');
+		ModulesPanel = this.ModulesPanel;
+		var prefs = this.getAllModulePrefs();
+		var html = '';
+		for (i in Modules) {
+			(prefs[i]) ? checked = 'CHECKED' : checked = '';
+			if (typeof Modules[i] !== 'undefined') {
+				desc = Modules[i].description;
+				html += '<p class="moduleListing"><label for="'+i+'">' + Modules[i].moduleName + ':</label> <input type="checkbox" name="'+i+'" '+checked+' value="true"> <span class="moduleDescription">'+desc+'</span></p>';
+			}
+		}
+		ModulesPanel.innerHTML = html;
+		var ModulesPanelButtons = el('span', { id: 'ModulesPanelButtons' });
+
+		// create the save preferences button
+		var saveButton = el('input', {
+			id: 'savePrefs',
+			type: 'button',
+			name: 'savePrefs',
+			value: 'save'
+		});
+		saveButton.addEventListener('click', function(e) {
+			e.preventDefault();
+			cli.log('Saving module prefs');
+			// get the new enabled/disabled status of modules
+			var checkboxes = $('input[type=checkbox]', Options.ModulesPanel);
+			var prefs = {};
+			for (i = 0, len = checkboxes.length; i < len; i++) {
+				var name = checkboxes[i].getAttribute('name');
+				var checked = checkboxes[i].checked;
+				prefs[name] = checked;
+			}
+			// apply the new statuses
+			Options.setModulePrefs(prefs);
+			Options.close();
+		}, true);
+		add(ModulesPanelButtons, saveButton);
+
+		// create the reset preferences button
+		var resetButton = el('input', {
+			id: 'resetPrefs',
+			type: 'button',
+			name: 'resetPrefs',
+			value: 'Reset to default'
+		});
+		resetButton.addEventListener('click', function(e) {
+			e.preventDefault();
+			Options.resetModulePrefs();
+		}, true);
+		add(ModulesPanelButtons, resetButton);
+
+		add(ModulesPanel, ModulesPanelButtons);
+		var clearfix = el('p', {
+			className: 'clear',
+			style: 'display: block'
+		});
+		add(ModulesPanel, clearfix);
+		add(OptionsContent, ModulesPanel);
+	},
+	drawOptionsPanel: function() {
+		cli.log('drawing options panel');
+		OptionsPanel = el('div', {
+			id: 'OptionsPanel',
+			className: 'panel'
+		});
+		optionsPanelLabel = el('label', {
+			'for': 'OptionsPanelSelector',
+			innerHTML: 'Configure module:'
+		});
+		add(OptionsPanel, optionsPanelLabel);
+		this.optionsPanelSelector = el('select', { id: 'OptionsPanelSelector' });
+		option = el('option', {
+			value: '',
+			innerHTML: 'Select Module'
+		});
+		add(this.optionsPanelSelector, option);
+
+		// create entries for each module
+		for (i in Modules) {
+			option = el('option', {
+				value: Modules[i].module,
+				innerHTML: Modules[i].moduleName
+			});
+			add(this.optionsPanelSelector, option);
+		}
+
+		this.optionsPanelSelector.addEventListener('change', function(e) {
+			module = this.options[this.selectedIndex].value;
+			if (module !== '') {
+				Options.drawConfigOptions(module);
+			}
+		}, true);
+
+		add(OptionsPanel, this.optionsPanelSelector);
+		OptionsPanelOptions = el('div', { id: 'OptionsPanelOptions' });
+		add(OptionsPanel, OptionsPanelOptions);
+		add(OptionsContent, OptionsPanel);
+	},
+	drawOptionInput: function(moduleID, optionName, optionObject, isTable) {
+		switch(optionObject.type) {
+			case 'text':
+				// text...
+				var ele = doc.createElement('input');
+				ele.setAttribute('id', optionName);
+				ele.setAttribute('type','text');
+				ele.setAttribute('moduleID',moduleID);
+				ele.setAttribute('value',optionObject.value);
+				break;
+			case 'password':
+				// password...
+				var ele = doc.createElement('input');
+				ele.setAttribute('id', optionName);
+				ele.setAttribute('type','password');
+				ele.setAttribute('moduleID',moduleID);
+				ele.setAttribute('value',optionObject.value);
+				break;
+			case 'boolean':
+				// checkbox
+				var ele = doc.createElement('input');
+				ele.setAttribute('id', optionName);
+				ele.setAttribute('type','checkbox');
+				ele.setAttribute('moduleID',moduleID);
+				ele.setAttribute('value',optionObject.value);
+				if (optionObject.value) {
+					ele.setAttribute('checked',true);
+				}
+				break;
+			case 'enum':
+				// radio buttons
+				if (typeof(optionObject.values) == 'undefined') {
+					alert('misconfigured enum option in module: ' + moduleID);
+				} else {
+				var ele = doc.createElement('div');
+				ele.setAttribute('id', optionName);
+					ele.setAttribute('class','enum');
+					for (var j=0;j<optionObject.values.length;j++) {
+						//var thisValue = optionObject.values[j].value;
+						var subEle = doc.createElement('input');
+						subEle.setAttribute('id', optionName+'-'+j);
+						subEle.setAttribute('type','radio');
+						subEle.setAttribute('name',optionName);
+						subEle.setAttribute('moduleID',moduleID);
+						subEle.setAttribute('value',optionObject.values[j].value);
+						if (optionObject.value == optionObject.values[j].value) {
+							subEle.setAttribute('checked','checked');
+						}
+						var subEleText = document.createTextNode(optionObject.values[j].name + ' ');
+						ele.appendChild(subEle);
+						ele.appendChild(subEleText);
+					}
+				}
+				break;
+			case 'keycode':
+				// keycode - shows a key value, but stores a keycode and possibly shift/alt/ctrl combo.
+				var ele = doc.createElement('input');
+				ele.setAttribute('id', optionName);
+				ele.setAttribute('type','text');
+				ele.setAttribute('class','keycode');
+				ele.setAttribute('moduleID',moduleID);
+				ele.setAttribute('value',optionObject.value);
+				break;
+			default:
+				console.log('misconfigured option in module: ' + moduleID);
+				break;
+		}
+		if (isTable) {
+			ele.setAttribute('tableOption','true');
+		}
+		return ele;
+	},
+	drawConfigOptions: function(module) {
+		cli.log('drawing config options for ' + module);
+		var options = Options.getOptions(module);
+		var count = 0;
+		$.extend(OptionsPanel, {
+			style: 'display: block',
+			innerHTML: ''
+		});
+		for (i in options) {
+			if (!(options[i].noconfig)) {
+				count++;
+				var optionContainer = el('div', { className: 'optionContainer' });
+				var label = el('label', {
+					'for': i,
+					innerHTML: i
+				});
+				add(optionContainer, label);
+				optionDescription = el('div', {
+					className: 'optionDescription',
+					innerHTML: options[i].description
+				});
+
+				// for table options
+				if (options[i].type === 'table') {
+					if (typeof options[i].fields === 'undefined') {
+						cli.log('Misconfigured table option in ' + module);
+					} else {
+						var fields = [];
+						var table = el('table', { className: 'optionsTable' });
+						table.setAttribute('module', module);
+						table.setAttribute('optionName', i);
+						// create the table head
+						var head = el('thead');
+						add(table, head);
+						var header = el('tr');
+						// get/add all the field names
+						for (var j = 0; j < options[i].fields.length; j++) {
+							fields[j] = options[i].fields[j].name;
+							var headCell = el('th', { innerHTML: options[i].fields[j].name });
+							add(header, headCell);
+						}
+						add(head, header); // add the header elements to the head
+						add(table, head); // add the table head to the table
+
+						// create the table body
+						var body = el('tbody', { id: 'tbody_'+i });
+						for (var j = 0; j < options[i].value.length; j++) {
+							var row = el('tr');
+							for (var k = 0; k < options[i].fields.length; k++) {
+								// create the table cell's data
+								opt = options[i].fields[k];
+								opt.value = options[i].value[j][k];
+								var optionName = opt.name + '_' + j;
+								// get the HTML for the cell
+								var html = this.drawOptionInput(module, optionName, opt, true);
+
+								var cell = el('td');
+								add(cell, html); // add the HTML to the cell
+								add(row, cell); // add the cell to the row
+							}
+							add(body, row); // add the row to the table body
+						}
+						add(table, body); // add the table body to the table
+						var ele = table;
+						cli.log(table);
+					}
+					add(optionContainer, optionDescription);
+					add(optionContainer, ele);
+
+					// "add row" button
+					var button = el('input', {
+						type: 'button',
+						value: 'Add Row',
+					});
+					button.setAttribute('optionName', i);
+					button.setAttribute('module', module);
+					button.addEventListener('click', function() {
+						var optionName = this.getAttribute('optionName');
+						cli.log(optionName);
+						var body = id('tbody_' + optionName); // get the option table body
+						var row = el('tr');
+						for (var i = 0, len = Modules[module].options[optionName].fields.length; i < len; i++) {
+							var cell = el('td');
+							var opt = Modules[module].options[optionName].fields[i];
+							opt.value = '';
+							var input = Options.drawOptionInput(module, optionName, opt, true);
+							add(cell, input); // add the input area to the cell
+							add(row, cell); // add the cell to the row
+						}
+						add(body, row); // add the row to the table
+					}, true);
+					add(optionContainer, button);
+				} else {
+					var ele = this.drawOptionInput(module, i, options[i]);
+					cli.log('drawn element to be added: ' + $(ele));
+					add(optionContainer, ele);
+					add(optionContainer, optionDescription);
+				}
+				add(OptionsPanel, optionContainer); // add the options to the panel
+			}
+		}
+
+		// TODO keycode processing
+
+		var saveButton = el('input', {
+			id: 'optionsSave',
+			type: 'button',
+			value: 'save'
+		});
+		saveButton.addEventListener('click', function(e) {
+			e.preventDefault();
+			cli.log('Saving module config');
+			var optionsDiv = id('OptionsPanel');
+			var inputs = $('input', optionsDiv); // get all the inputs
+			for (var i = 0, len = inputs.length; i < len; i++) {
+				cli.log(inputs[i]);
+				if ((inputs[i].getAttribute('type') != 'button') && (inputs[i].getAttribute('displayonly') != 'true') && (inputs[i].getAttribute('tableOption') != 'true')) {
+					if (inputs[i].getAttribute('type') === 'radio') {
+						var optionName = inputs[i].getAttribute('name');
+					} else {
+						var optionName = inputs[i].getAttribute('id');
+					}
+					var module = inputs[i].getAttribute('module');
+					cli.log(module);
+					if (inputs[i].getAttribute('type') === 'checkbox') {
+						(inputs[i].checked) ? value = true : value = false;
+					} else if (inputs[i].getAttribute('type') === 'radio') {
+						if (inputs[i].checked) {
+							var value = inputs[i].value;
+						}
+					} else {
+						// check for keycode
+						if ($(inputs[i]).hasClass('keycode')) {
+							var tmp = inputs[i].value.split(',');
+							// convert the internal values of this array into their respective types (int, bool, bool, bool)
+							var value = Array(parseInt(tmp[0]), (tmp[1] == 'true'), (tmp[2] == 'true'), (tmp[3] == 'true'), (tmp[4] == 'true'));
+						} else {
+							var value = inputs[i].value;
+						}
+					}
+					if (typeof value != 'undefined') {
+						cli.log('Setting options for ' + module);
+						Options.setOption(module, optionName, value);
+					}
+				}
+			}
+			// check for tables
+			var tables = $('.optionsTable', optionsDiv);
+			if (typeof tables !== 'undefined') {
+				for (i = 0, len = tables.length; i < len; i++) {
+					var module = tables[i].getAttribute('module');
+					var optionName = tables[i].getAttribute('optionName');
+					cli.log(optionName);
+					var body = $('tbody', tables[i]);
+					var rows = $('tr', body);
+					cli.log(rows.length);
+					if (typeof rows !== 'undefined') {
+						var optMatrix = [];
+						for (j = 0; j < rows.length; j++) {
+							var row = [];
+							var inputs = $('input', rows[j]);
+							var blank = true;
+							for (var k = 0; k < inputs.length; k++) {
+								var module = inputs[k].getAttribute('module');
+								if (inputs[k].getAttribute('type') === 'checkbox') {
+									(inputs[k].checked) ? value = true : value = false;
+								} else if (inputs[k].getAttribute('type') === 'radio') {
+									if (inputs[k].checked) {
+										var value = inputs[k].value;
+									}
+								} else {
+									// check for keycode
+									if ($(inputs[k]).hasClass('keycode')) {
+										var tmp = inputs[k].value.split(',');
+										// convert the internal values of this array into their respective types (int, bool, bool, bool)
+										var value = Array(parseInt(tmp[0]), (tmp[1] == 'true'), (tmp[2] == 'true'), (tmp[3] == 'true'), (tmp[4] == 'true'));
+									} else {
+										var value = inputs[k].value;
+									}
+								}
+								if (value != '') {
+									blank = false;
+								}
+								row[k] = value;
+							}
+							if ((!blank) && (row !== null)) {
+								optMatrix[j] = row;
+							}
+						}
+						if (optMatrix === null) {
+							optMatrix = [];
+						}
+						if (typeof value !== 'undefined') {
+							cli.log(optMatrix);
+							Options.setOption(module, optionName, optMatrix);
+						}
+					}
+				}
+			}
+
+			// show status on save
+			var status = id('optionsSaveStatus');
+			$.extend(status, {
+				innerHTML: 'Saved.',
+				style: 'display: block; opacity: 1'
+			});
+			//Utils.fadeOut(status, 0.1);
+		}, true);
+		add(OptionsPanel, saveButton);
+		// save indicator
+		var saveStatus = el('div', {
+			id: 'optionsSaveStatus',
+			className: 'saveStatus'
+		});
+		add(OptionsPanel, saveStatus);
+		if (count === 0) {
+			OptionsPanel.innerHTML = 'There are no configurable options for this module.';
+		}
+	},
+	addOptionsLink: function() {
+		var menu = $('#header-account > .logged-in');
+		if (menu) {
+			var prefsLink = $('#manage', menu);
+			var separator = el('span', {
+				className: 'separator',
+				innerHTML: '|'
+			});
+			var OptionsEntry = el('span', {
+				className: 'user'
+			});
+			this.OptionsLink = el('a', {
+				title: 'Voat Enhancement Suite',
+				id: 'VESOptionsLink',
+				href: 'javascript:void(0)',
+				innerHTML: 'VES'
+			});
+			this.OptionsLink.addEventListener('click', function(e) {
+				e.preventDefault();
+				Options.open();
+			}, true);
+			$(OptionsEntry).append(this.OptionsLink);
+			prefsLink.parent().after(OptionsEntry);
+			prefsLink.parent().after(separator);
+		}
+		Options.create();
+	},
+	open: function() {
+		cli.log('openning options menu');
+		// trigger Voat's builtin #modal-background
+		// show OptionsContainer
+		OptionsContainer.setAttribute('style', 'display: block');
+		Options.menuClick(MenuItems[0]);
+	},
+	close: function() {
+		cli.log('closing options menu');
+		// hide Voat's modal again
+		OptionsContainer.setAttribute('style', 'display: none');
+	},
+	menuClick: function(item) {
+		menu = item.id;
+		cli.log(menu + ' was clicked');
+		$.each(MenuItems, function(index, item) {
+			$(item).removeClass('open');
+		});
+		$(menu).addClass('open');
+
+		$.each(OptionsPanels, function(index, item) {
+			$(item).removeClass('open');
+		});
+		switch(menu) {
+			case 'Enable Modules Menu':
+				$(Options.ModulesPanel).addClass('open');
+				break;
+			case 'Module Options Menu':
+				$(Options.OptionsPanel).addClass('open');
+				break;
+			default:
+				cli.log('Unrecognized menu item:' + menu);
+				break;
+		}
 	}
-});
+};
 
 Modules.debug = {
-	moduleID: 'debug',
+	module: 'debug',
 	moduleName: 'VES Debugger',
 	description: 'VES analytics for debugging.',
 	options: {
@@ -818,30 +1333,26 @@ Modules.debug = {
 			value: true,
 			description: 'Print system information (OS & browser) to the console. Helps when submitting bug reports.'
 		},
-		printLocalStorage: {
+		printStorage: {
 			type: 'boolean',
 			value: false,
-			description: 'Print the contents of localStorage to the console on every page load.'
+			description: 'Print the contents of storage to the console on every page load.'
 		},
-		// new options format:
-		//'Log System Info': [true, 'Print system information to the console. Helps when submitting bug reports.'],
-		//'Print localStorage': [true, 'Print the contents of localStorage to the console on each page.']
 	},
+	alwaysEnabled: true,
 	isEnabled: function() {
 		// technically cheating
 		return true;
 	},
-	include: [
-		'all'
-	],
 	isMatchURL: function() {
-		return Utils.isMatchURL(this.moduleID);
+		return Utils.isMatchURL(this.module);
 	},
 	go: function() {
 		if ((this.isEnabled()) && (this.isMatchURL())) {
 			cli.log('VES loaded: ' + Date());
 
 			this.printSystemInfos();
+			this.printStorage();
 
 			// add a link to VES in the footer
 			var separator = el('span', {
@@ -868,21 +1379,22 @@ Modules.debug = {
 				'OS': System.OS,
 				'Browser': System.browser + ' ' + System.version
 			};
-			cli.log(JSON.stringify(json));
+			cli.log(json);
 		}
 	},
-	printLocalStorage: function() {
-		// this should probably go in Utils
-		cli.log('localStorage data...');
-		for (var key in localStorage) {
-			cli.log(key + ':');
-			cli.log(localStorage[key]);
+	printStorage: function() { // this should probably go in Utils
+		if (this.options.printSystemInfos) {
+			cli.log('HTML5 storage data...');
+			for (var key in localStorage) {
+				if (typeof localStorage[key] !== 'function') {
+					cli.log(key + ':', localStorage[key]);
+				}
+			}
 		}
 	}
 };
-
 Modules.hideChildComments = {
-	moduleID: 'hideChildComments',
+	module: 'hideChildComments',
 	moduleName: 'Hide All Child Comments',
 	description: 'Allows you to hide all child comments for easier reading.',
 	options: {
@@ -891,17 +1403,15 @@ Modules.hideChildComments = {
 			value: false,
 			description: 'Automatically hide all child comments on page load?'
 		}
-		// new options format
-		//'Auto Hide Child Comments': [false, 'Automatically hide all child comments on page load.'],
 	},
 	include: [
 		'comments'
 	],
 	isEnabled: function() {
-		return Utils.getModulePrefs(this.moduleID);
+		return Options.getModulePrefs(this.module);
 	},
 	isMatchURL: function() {
-		return Utils.isMatchURL(this.moduleID);
+		return Utils.isMatchURL(this.module);
 	},
 	go: function() {
 		if ((this.isEnabled()) && (this.isMatchURL())) {
@@ -1110,7 +1620,7 @@ Modules.searchHelper = {
 };
 
 Modules.singleClick = {
-	moduleID: 'singleClick',
+	module: 'singleClick',
 	moduleName: 'Single Click',
 	description: 'Adds an [l+c] link that opens both the link and the comments page in new tabs.',
 	options: {
@@ -1128,12 +1638,9 @@ Modules.singleClick = {
 			value: false,
 			description: 'Hide the [l=c] where the link is the same as the comments page'
 		}
-		// new options format:
-		//'Open Order': ['commentsfirst', 'The order to open the link and comments.' ['commentsfirst', 'linkfirst']],
-		//'Hide [l=c]': [false, 'Hide the [l=c] on self/text posts']
 	},
 	isEnabled: function() {
-		return Utils.getModulePrefs(this.moduleID);
+		return Options.getModulePrefs(this.module);
 	},
 	include: [
 		'all',
@@ -1142,7 +1649,7 @@ Modules.singleClick = {
 		'comments',
 	],
 	isMatchURL: function() {
-		return Utils.isMatchURL(this.moduleID);
+		return Utils.isMatchURL(this.module);
 	},
 	beforeLoad: function() {
 		if ((this.isEnabled()) && (this.isMatchURL())) {
@@ -1225,7 +1732,7 @@ Modules.singleClick = {
 };
 
 Modules.userTags = {
-	moduleID: 'userTags',
+	module: 'userTags',
 	moduleName: 'User Tags',
 	category: 'Users',
 	description: 'Tag Voat users in posts and comments.',
@@ -1235,14 +1742,12 @@ Modules.userTags = {
 			value: false,
 			description: 'When on, the ignored user\'s entire post is hidden, not just the title.'
 		}
-		// new options format:
-		//'Hard Ignore': [false, 'When on, the ignored user\'s entire post is hidden, not just the title.'],
 	},
 	isEnabled: function() {
-		return Utils.getModulePrefs(this.moduleID);
+		return Options.getModulePrefs(this.module);
 	},
 	isMatchURL: function() {
-		return Utils.isMatchURL(this.moduleID);
+		return Utils.isMatchURL(this.module);
 	},
 	include: [
 		'all',
@@ -1331,7 +1836,7 @@ Modules.userTags = {
 };
 
 Modules.voatingBooth = {
-	moduleID: 'voatingBooth',
+	module: 'voatingBooth',
 	moduleName: 'Voating Booth',
 	description: 'UI enhancements for Voat.',
 	options: {
@@ -1355,18 +1860,15 @@ Modules.voatingBooth = {
 			value: 'none',
 			description: 'Pin header elements to the page top, even when scrolling.'
 		}
-		// new options format:
-		//'Full Voat': [false, 'Make Voat use the device\'s full width'],
-		//'Pin Header': ['none', 'Pin Voat elements to the page top when scrolling.', ['none', 'sub', 'header']]
 	},
 	include: [
 		'all'
 	],
 	isEnabled: function() {
-		return Utils.getModulePrefs(this.moduleID);
+		return Utils.getModulePrefs(this.module);
 	},
 	isMatchURL: function() {
-		return Utils.isMatchURL(this.moduleID);
+		return Utils.isMatchURL(this.module);
 	},
 	beforeLoad: function() {
 		if ((this.isEnabled()) && (this.isMatchURL())) {
@@ -1455,42 +1957,200 @@ Modules.voatingBooth = {
 	},
 };
 
+Modules.voatingNeverEnds = {
+	module: 'voatingNeverEnds',
+	moduleName: 'voatingNeverEnds',
+	description: 'Autoload next pages of link lists on scroll.',
+	options: {
+		fadeDupes: {
+			type: 'enum',
+			value: 'fade',
+			values: [
+				{ name: 'Fade', value: 'fade' },
+				{ name: 'Hide', value: 'hide' },
+				{ name: 'Do nothing', value: 'none' },
+			],
+			description: 'Fade or hide duplicate posts.'
+		},
+	},
+	isEnabled: function() {
+		return Options.getModulePrefs(this.module);
+	},
+	include: [
+		'subverse', 'linklist'
+	],
+	isMatchURL: function() {
+		return Utils.isMatchURL(this.module);
+	},
+	beforeLoad: function() {
+		if ((this.isEnabled()) && (this.isMatchURL())) {
+			Utils.addCSS('.VNEdupe {}');
+			switch (this.options.fadeDupes.value) {
+				case 'fade':
+					Utils.addCSS('.VNEdupe {opacity: 0.3}');
+					break;
+				case 'hide':
+					Utils.addCSS('.VNEdupe {display: none}');
+					break;
+			}
+		}
+	},
+	go: function() {
+		if ((this.isEnabled()) && (this.isMatchURL())) {
+			// load the hashes from memory
+			Modules.voatingNeverEnds.dupeHash = Modules.voatingNeverEnds.dupeHash || {};
+
+			// since every comments link is unique to its post, cache them
+			var entries = $('a.comments', doc.body);
+			for (var i = entries.length - 1; i > -1; i--) {
+				Modules.voatingNeverEnds.dupeHash[entries[i].href] = 1;
+			}
+
+			var st = $('.sitetable');
+			this.sitetable = st[0];
+
+			// get the navigation links
+			var links = $('.pagination-container .btn-whoaverse-paging a', doc.body);
+			if (links.length > 0) {
+				var next = links[links.length-1];
+				if (next) {
+					this.nextURL = next.href;
+					var nextPos = Utils.getXYpos(next);
+					this.nextPageScrollY = nextPos.y;
+				}
+
+				this.attachLoader();
+
+				var currPageRegex = /\?page=([0-9]+)/i;
+				var backPage = currPageRegex.exec(location.href);
+				if (backPage) {
+					this.currPage = backPage[1];
+					this.loadPage(true);
+				}
+				this.currPage = this.currPage || 1;
+
+				window.addEventListener('scroll', function(e) {
+					if ((Utils.elementInViewport(Modules.voatingNeverEnds.loader)) && (Modules.voatingNeverEnds.fromBackButton != true)) {
+						Modules.voatingNeverEnds.loadPage();
+					}
+				}, false);
+
+				var pagination = $('.pagination-container');
+				for (var i = 0, len = pagination.length; i < len; i++) {
+					pagination[i].style.display = 'none';
+				}
+
+			}
+		}
+	},
+	attachLoader: function() {
+		this.loader = el('p', {
+			innerHTML: 'Voating Never Ends',
+			id: 'progressIndicator',
+			className: 'voatingNeverEnds btn-whoaverse btn-block'
+		});
+		add(this.sitetable, this.loader);
+	},
+	dupeCheck: function(html) {
+		// get all the submissions
+		var submissions = html.querySelectorAll('div.link');
+		for (var i = submissions.length - 1; i > -1; i--) {
+			var sub = submissions[i];
+			// get the sub's comments URL
+			var thisCommentsLink = $('a.comments', sub).href;
+			if (Modules.voatingNeverEnds.dupeHash[thisCommentsLink]) {
+				// if we've seen the link before, mark it as a dupe
+				addClass(sub, 'VNEdupe');
+			} else {
+				Modules.voatingNeverEnds.dupeHash[thisCommentsLink] = 1;
+			}
+		}
+		return html;
+	},
+	// use jQuery's $.get() function to pull the next page from Voat's servers
+	loadPage: function(fromBackButton) {
+		// if (fromBackButton) {
+
+		// } else {
+			this.fromBackButton = false;
+		// }
+		cli.log('triggered loadPage for '+this.nextURL);
+		if (this.isLoading !== true) {
+			this.loader.innerHTML = 'Sit tight...';
+			this.isLoading = true;
+			cli.log(this.nextURL);
+			// $.get(url[, data][, success][, dataType])
+			$.get(this.nextURL, null, null, 'html').done(function(response) {
+				if (!(Modules.voatingNeverEnds.fromBackButton)) {
+					Modules.voatingNeverEnds.currPage++;
+					set('voatingNeverEnds.lastPage', Modules.voatingNeverEnds.nextPage);
+					location.hash = '?page='+Modules.voatingNeverEnds.currPage;
+				}
+				if (typeof Modules.voatingNeverEnds.loader.parentNode != 'undefined') {
+					Modules.voatingNeverEnds.loader.parentNode.removeChild(Modules.voatingNeverEnds.loader);
+				}
+				// just get the HTML
+				var response = response.responseText;
+				var temp = el('div', {
+					// rip any JavaScript
+					innerHTML: response.replace(/<script(.|\s)*?\/script>/g, '')
+				});
+
+				var html = $('.sitetable', temp);
+				var st = $('.sitetable', tmp); // should be an array
+
+				// run any modules on .sitetable before adding
+
+				var links = temp.querySelectorAll('.pagination-container .btn-whoaverse-paging a');
+				var next = links[links.length - 1];
+				Modules.voatingNeverEnds.sitetable.appendChild(html);
+				Modules.voatingNeverEnds.isLoading = false;
+				if (next) {
+					Modules.voatingNeverEnds.nextPage = next.href;
+					Modules.voatingNeverEnds.attachLoader();
+				}
+				if (fromBackButton) {
+					// @TODO
+				}
+			}).fail(function(error) {
+				cli.log(error);
+				Modules.voatingNeverEnds.VNEFail(error);
+			}); // $.get()
+		} else {
+			//cli.log('load new page ignored, isLoading = true');
+		}
+	},
+	VNEFail: function() {
+		// @TODO
+	}
+};
+
 (function() {
 
-	/**
-		VES needs to go through and first load ALL of the modules' defaults in order
-		to make sure that no new options (after an update) are left out of storage.
-		This will also account for when VES is run for the first time.
-		After all the defaults are loaded, extend the loaded defaults and replace
-		all the values with whatever the user's settings are (from localStorage).
-		THEN we can start preloading the modules and running them.
-	**/
-
+	// see if we can access anything
 	testLocalStorage();
 
 	var VES = { // for the extension itself
 		init: function() {
-			Utils.resetModulePrefs();
+			this.loadOptions();
 
-			/*
-				This is where we load options. To make sure we get everything,
-				check the saved configs and see if we're running a newer version
-				of VES than we had previously. If it's newer, load the old
-				stuff, extend it with the new, and load the old stuff again.
-				Then look at the defaults for the list of all modules, and load
-				them if the user has them enabled.
-			*/
+			// start loading the modules once <head> can be found
+			asap((function() {
+				return doc.head;
+			}), this.loadModules);
 
-			// load a user's saved settings
-			return get(Storage, function(items) { // get saved Settings
-				// extend and replace the loaded defaults
-				extend(Storage, items);
-
-				// start loading the modules once <head> can be found
-				return asap((function() {
-					return doc.head;
-				}), VES.loadModules);
-			});
+			asap((function() {
+				return doc.body;
+			}), Options.addOptionsLink);
+		},
+		loadOptions: function() {
+			var module;
+			for (module in Modules) {
+				if (typeof Modules[module] === 'object') {
+					//cli.log('Running loadOptions('+module+')');
+					Options.getOptions(module);
+				}
+			}
 		},
 		loadModules: function() {
 			var module;

@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name        Voat Enhancement Suite
-// @version     0.0.3
+// @version     0.0.4~alpha
 // @description A suite of tools to enhance Voat.
 // @namespace   http://tjg.io/Voat-Enhancement-Suite
 // @author      @travis <travisjgrammer@gmail.com>

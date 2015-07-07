@@ -1,5 +1,5 @@
 Modules.hideChildComments = {
-	moduleID: 'hideChildComments',
+	module: 'hideChildComments',
 	moduleName: 'Hide All Child Comments',
 	description: 'Allows you to hide all child comments for easier reading.',
 	options: {
@@ -8,17 +8,15 @@ Modules.hideChildComments = {
 			value: false,
 			description: 'Automatically hide all child comments on page load?'
 		}
-		// new options format
-		//'Auto Hide Child Comments': [false, 'Automatically hide all child comments on page load.'],
 	},
 	include: [
 		'comments'
 	],
 	isEnabled: function() {
-		return Utils.getModulePrefs(this.moduleID);
+		return Options.getModulePrefs(this.module);
 	},
 	isMatchURL: function() {
-		return Utils.isMatchURL(this.moduleID);
+		return Utils.isMatchURL(this.module);
 	},
 	go: function() {
 		if ((this.isEnabled()) && (this.isMatchURL())) {
