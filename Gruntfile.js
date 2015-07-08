@@ -48,7 +48,22 @@ module.exports = function(grunt) {
 				// files to watch
 				files: ['Gruntfile.js', 'package.json', 'src/*', 'src/**/*'],
 				// rebuild the files on every source/config file change
-				tasks: ['build']
+				tasks: ['build', 'jshint']
+			}
+		},
+		jshint: {
+			options: {
+				jshintrc: '.jshintrc'
+			},
+			grunt: {
+				src: ['Gruntfile.js']
+			},
+			all: {
+				src: [
+					// don't check builds/
+					'src/*.js',
+					'src/**/*.js'
+				]
 			}
 		}
 	});
@@ -58,4 +73,5 @@ module.exports = function(grunt) {
 	grunt.registerTask('default', ['build']);
 
 	grunt.registerTask('build', ['clean', 'concat']);
+	grunt.registerTask('jshint', ['jshint:all']);
 };
