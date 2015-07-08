@@ -1,4 +1,3 @@
-
 var OptionsContainer = '';
 var MenuItems = [];
 var OptionsPanels = [];
@@ -502,7 +501,7 @@ Options = {
 					} else {
 						var optionName = inputs[i].getAttribute('id');
 					}
-					var module = inputs[i].getAttribute('module');
+					var module = inputs[i].getAttribute('moduleID');
 					cli.log(module);
 					if (inputs[i].getAttribute('type') === 'checkbox') {
 						(inputs[i].checked) ? value = true : value = false;
