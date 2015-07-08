@@ -1,0 +1,11 @@
+{
+	"quotmark": "single",
+	"strict": false,
+	"jquery": true,
+	"undef": true,
+	"unused": "vars",
+	"globals": {
+		"Modules": true,
+		"Options": true,
+	}
+}

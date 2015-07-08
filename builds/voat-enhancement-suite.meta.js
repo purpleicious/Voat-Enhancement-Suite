@@ -4,7 +4,7 @@
 // @description A suite of tools to enhance Voat.
 // @namespace   http://tjg.io/Voat-Enhancement-Suite
 // @author      @travis <travisjgrammer@gmail.com>
-// @license     WTFPL2; https://github.com/travis-g/Voat-Enhancement-Suite/blob/master/LICENSE
+// @license     WTFPL; https://github.com/travis-g/Voat-Enhancement-Suite/blob/master/LICENSE
 // @match       *://voat.co/*
 // @match       *://*.voat.co/*
 // @grant       GM_getValue
