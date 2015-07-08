@@ -32,12 +32,13 @@
 		"load-grunt-tasks": "^2.0.0",
 		"grunt-contrib-clean": "^0.6.0",
 		"grunt-contrib-concat": "^0.5.0",
-		"grunt-contrib-watch": "^0.6.1"
+		"grunt-contrib-watch": "^0.6.1",
+                "grunt-contrib-jshint": "^0.11.2"
 	},
 	"repository": {
 		"type": "git",
 		"url": "git://github.com/travis-g/Voat-Enhancement-Suite.git"
 	},
 	"author": "@travis <travisjgrammer@gmail.com>",
-	"license": "WTFPL2"
+	"license": "WTFPL"
 }
