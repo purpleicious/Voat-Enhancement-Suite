@@ -441,6 +441,9 @@ Utils = {
 	},
 
 	regexes: {
+		all: /^https?:\/\/(?:[\-\w\.]+\.)?voat\.co\//i,
+		inbox: /^https?:\/\/(?:[\-\w\.]+\.)?voat\.co\/messaging\/([\w\.\+]+)\//i,
+		comments: /^https?:\/\/(?:[\-\w\.]+\.)?voat\.co\/v\/([\w\.\+]+)\/comments\/([\w\.\+]+)/i,
 		commentPermalink: /^https?:\/\/(?:[\-\w\.]+\.)?voat\.co\/v\/([\w\.\+]+)\/comments\/([0-9]+)\/([0-9]+)/i,
 		profile: /^https?:\/\/(?:[\-\w\.]+\.)?voat\.co\/user\/([\w\.\+]+)/i,
 		prefs: /^https?:\/\/(?:[\-\w\.]+\.)?voat\.co\/account\/manage/i,
@@ -658,9 +661,7 @@ Utils = {
 	},
 };
 
-
-var OptionsContainer = '';
-var MenuItems = [];
+var SettingsConsole = '';
 var OptionsPanels = [];
 Options = {
 	defaultPrefs: {
@@ -824,25 +825,26 @@ Options = {
 		return Modules[module].options;
 	},
 
-	container: OptionsContainer,
+	container: SettingsConsole,
 
 	// the two settings panels
-	ModulesPanel: el('div', { id: 'ModulesPanel', className: 'panel' }),
-	OptionsPanel: el('div', { id: 'OptionsPanel', className: 'panel' }),
+	ModulesPanel: el('div', { id: 'VESPanelModulesPane'}),
+	OptionsPanel: el('div', { id: 'VESPanelOptions'}),
 
 	create: function() {
 		cli.log('create options dialog...');
-		OptionsContainer = el('div', {
-			id: 'VESOptions',
-			className: 'modal'
+		SettingsConsole = el('div', {
+			id: 'VESSettingsConsole'
 		});
-		OptionsHeader = el('div');
-		OptionsTitle = el('div', {
-			className: 'alert-title',
-			innerHTML: 'VES Options'
+		SettingsHeader = el('div', {
+			id: 'VESSettingsHeader'
 		});
-		add(OptionsHeader, OptionsTitle);
-		var menuItems = new Array('Enable Modules', 'Module Options');
+		SettingsTitleBar = el('div', {
+			id: 'VESSettingsTitleBar',
+			innerHTML: 'Voat Enhancement Suite'
+		});
+		add(SettingsHeader, SettingsTitleBar);
+		/*var menuItems = new Array('Enable Modules', 'Module Options');
 		Menu = el('ul', { id: 'Menu' });
 		for (var item in menuItems) {
 			var thisMenuItem = el('li', {
@@ -855,19 +857,17 @@ Options = {
 			}, true);
 			add(Menu, thisMenuItem);
 		}
-		add(OptionsHeader, Menu);
-		add(OptionsContainer, OptionsHeader);
+		add(OptionsHeader, Menu);*/
+		add(SettingsConsole, SettingsHeader);
 
-		MenuItems = Menu.querySelectorAll('li');
-
-		OptionsContent = el('div', { id: 'OptionsContent' });
-		add(OptionsContainer, OptionsContent);
+		SettingsContent = el('div', { id: 'VESSettingsContent' });
+		add(SettingsConsole, SettingsContent);
 
 		this.drawModulesPanel();
 		this.drawOptionsPanel();
 
-		OptionsPanels = OptionsContent.querySelectorAll('div');
-		$(doc.body).append(OptionsContainer);
+		OptionsPanels = SettingsContent.querySelectorAll('div');
+		$(doc.body).append(SettingsConsole);
 	},
 	drawModulesPanel: function() {
 		cli.log('drawing modules panel');
@@ -927,13 +927,12 @@ Options = {
 			style: 'display: block'
 		});
 		add(ModulesPanel, clearfix);
-		add(OptionsContent, ModulesPanel);
+		add(SettingsContent, ModulesPanel);
 	},
 	drawOptionsPanel: function() {
 		cli.log('drawing options panel');
 		OptionsPanel = el('div', {
-			id: 'OptionsPanel',
-			className: 'panel'
+			id: 'VESPanelOptions',
 		});
 		optionsPanelLabel = el('label', {
 			'for': 'OptionsPanelSelector',
@@ -964,9 +963,9 @@ Options = {
 		}, true);
 
 		add(OptionsPanel, this.optionsPanelSelector);
-		OptionsPanelOptions = el('div', { id: 'OptionsPanelOptions' });
-		add(OptionsPanel, OptionsPanelOptions);
-		add(OptionsContent, OptionsPanel);
+		PanelOptions = el('div', { id: 'VESPanelOptions' });
+		add(OptionsPanel, PanelOptions);
+		add(SettingsContent, OptionsPanel);
 	},
 	drawOptionInput: function(moduleID, optionName, optionObject, isTable) {
 		switch(optionObject.type) {
@@ -1162,7 +1161,7 @@ Options = {
 					} else {
 						var optionName = inputs[i].getAttribute('id');
 					}
-					var module = inputs[i].getAttribute('module');
+					var module = inputs[i].getAttribute('moduleID');
 					cli.log(module);
 					if (inputs[i].getAttribute('type') === 'checkbox') {
 						(inputs[i].checked) ? value = true : value = false;
@@ -1260,6 +1259,9 @@ Options = {
 		}
 	},
 	addOptionsLink: function() {
+
+		return; // this isn't complete yet
+
 		var menu = $('#header-account > .logged-in');
 		if (menu) {
 			var prefsLink = $('#manage', menu);
@@ -1289,14 +1291,14 @@ Options = {
 	open: function() {
 		cli.log('openning options menu');
 		// trigger Voat's builtin #modal-background
-		// show OptionsContainer
-		OptionsContainer.setAttribute('style', 'display: block');
-		Options.menuClick(MenuItems[0]);
+		// show SettingsConsole
+		SettingsConsole.setAttribute('style', 'display: block');
+		// Options.menuClick(MenuItems[0]);
 	},
 	close: function() {
 		cli.log('closing options menu');
 		// hide Voat's modal again
-		OptionsContainer.setAttribute('style', 'display: none');
+		SettingsConsole.setAttribute('style', 'display: none');
 	},
 	menuClick: function(item) {
 		menu = item.id;
@@ -1757,7 +1759,7 @@ Modules.voatingBooth = {
 		'all'
 	],
 	isEnabled: function() {
-		return Utils.getModulePrefs(this.module);
+		return Options.getModulePrefs(this.module);
 	},
 	isMatchURL: function() {
 		return Utils.isMatchURL(this.module);

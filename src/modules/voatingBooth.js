@@ -28,7 +28,7 @@ Modules.voatingBooth = {
 		'all'
 	],
 	isEnabled: function() {
-		return Utils.getModulePrefs(this.module);
+		return Options.getModulePrefs(this.module);
 	},
 	isMatchURL: function() {
 		return Utils.isMatchURL(this.module);
