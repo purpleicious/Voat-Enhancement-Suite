@@ -22,6 +22,9 @@ Utils = {
 	},
 
 	regexes: {
+		all: /^https?:\/\/(?:[\-\w\.]+\.)?voat\.co\//i,
+		inbox: /^https?:\/\/(?:[\-\w\.]+\.)?voat\.co\/messaging\/([\w\.\+]+)\//i,
+		comments: /^https?:\/\/(?:[\-\w\.]+\.)?voat\.co\/v\/([\w\.\+]+)\/comments\/([\w\.\+]+)/i,
 		commentPermalink: /^https?:\/\/(?:[\-\w\.]+\.)?voat\.co\/v\/([\w\.\+]+)\/comments\/([0-9]+)\/([0-9]+)/i,
 		profile: /^https?:\/\/(?:[\-\w\.]+\.)?voat\.co\/user\/([\w\.\+]+)/i,
 		prefs: /^https?:\/\/(?:[\-\w\.]+\.)?voat\.co\/account\/manage/i,
