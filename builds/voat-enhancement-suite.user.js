@@ -4,7 +4,7 @@
 // @description A suite of tools to enhance Voat.
 // @namespace   http://tjg.io/Voat-Enhancement-Suite
 // @author      @travis <travisjgrammer@gmail.com>
-// @license     WTFPL2; https://github.com/travis-g/Voat-Enhancement-Suite/blob/master/LICENSE
+// @license     GPL; https://github.com/travis-g/Voat-Enhancement-Suite/blob/master/LICENSE
 // @match       *://voat.co/*
 // @match       *://*.voat.co/*
 // @grant       GM_getValue
@@ -17,6 +17,31 @@
 // @updateURL   voat-enhancement-suite.meta.js
 // @downloadURL voat-enhancement-suite.user.js
 // ==/UserScript==
+
+/*
+*	Voat Enhancement Suite - Version 0.0.3 - 2015-07-10
+*	
+*	Licensed under GNU General Public License.
+*	https://github.com/travis-g/Voat-Enhancement-Suite/blob/master/LICENSE
+*	
+*	Voat Enhancement Suite Copyright © 2015 @travis <travisjgrammer@gmail.com>
+*	https://github.com/travis-g/Voat-Enhancement-Suite/
+*	Reddit Enhancement Suite Copyright © 2010-2015 honestbleeps <steve@honestbleeps.com>
+*	https://github.com/honestbleeps/Reddit-Enhancement-Suite/
+*	
+*	This program is free software: you can redistribute it and/or modify
+*	it under the terms of the GNU General Public License as published by
+*	the Free Software Foundation, either version 3 of the License, or
+*	(at your option) any later version.
+*	
+*	This program is distributed in the hope that it will be useful,
+*	but WITHOUT ANY WARRANTY; without even the implied warranty of
+*	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+*	GNU General Public License for more details.
+*	
+*	You should have received a copy of the GNU General Public License
+*	along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
 
 var info = {
 	v: '0.0.3',
