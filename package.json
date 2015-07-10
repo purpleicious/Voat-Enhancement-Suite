@@ -40,9 +40,5 @@
 		"url": "git://github.com/travis-g/Voat-Enhancement-Suite.git"
 	},
 	"author": "@travis <travisjgrammer@gmail.com>",
-<<<<<<< HEAD
-	"license": "WTFPL"
-=======
 	"license": "GPL"
->>>>>>> fbd764b9b8f4d52bb05260a7b76fe76b6991aa6c
 }
