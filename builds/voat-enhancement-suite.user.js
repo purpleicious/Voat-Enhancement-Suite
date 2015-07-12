@@ -194,7 +194,7 @@ escape = (function() {
 })();
 
 // don't kill everything if a JSON parse fails
-JSON.prototype.safeParse = function(data, storageSource, silent) {
+JSON.safeParse = function(data, storageSource, silent) {
 	try {
 		return JSON.parse(data);
 	} catch (e) {
@@ -1284,8 +1284,6 @@ Options = {
 		}
 	},
 	addOptionsLink: function() {
-
-		return; // this isn't complete yet
 
 		var menu = $('#header-account > .logged-in');
 		if (menu) {

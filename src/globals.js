@@ -149,7 +149,7 @@ escape = (function() {
 })();
 
 // don't kill everything if a JSON parse fails
-JSON.prototype.safeParse = function(data, storageSource, silent) {
+JSON.safeParse = function(data, storageSource, silent) {
 	try {
 		return JSON.parse(data);
 	} catch (e) {

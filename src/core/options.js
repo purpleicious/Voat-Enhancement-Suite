@@ -597,8 +597,6 @@ Options = {
 	},
 	addOptionsLink: function() {
 
-		return; // this isn't complete yet
-
 		var menu = $('#header-account > .logged-in');
 		if (menu) {
 			var prefsLink = $('#manage', menu);
