@@ -6,7 +6,7 @@
 	"meta": {
 		"name": "Voat Enhancement Suite",
 		"abbr": "VES",
-		"version": "0.0.4~alpha",
+		"version": "0.0.4a",
 		"repo": "https://github.com/travis-g/Voat-Enhancement-Suite/",
 		"matches": [
 			"*://voat.co/*",

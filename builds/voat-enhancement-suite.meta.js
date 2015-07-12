@@ -1,10 +1,10 @@
 // ==UserScript==
 // @name        Voat Enhancement Suite
-// @version     0.0.4~alpha
+// @version     0.0.4a
 // @description A suite of tools to enhance Voat.
 // @namespace   http://tjg.io/Voat-Enhancement-Suite
 // @author      @travis <travisjgrammer@gmail.com>
-// @license     WTFPL; https://github.com/travis-g/Voat-Enhancement-Suite/blob/master/LICENSE
+// @license     GPL; https://github.com/travis-g/Voat-Enhancement-Suite/blob/master/LICENSE
 // @match       *://voat.co/*
 // @match       *://*.voat.co/*
 // @grant       GM_getValue

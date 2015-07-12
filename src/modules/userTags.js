@@ -31,7 +31,7 @@ Modules.userTags = {
 
 			this.tags = null;
 			if (typeof tags !== 'undefined') {
-				this.tags = safeJSON(tags, 'userTags.tags', true);
+				this.tags = JSON.safeParse(tags, 'userTags.tags', true);
 			}
 			this.applyTags();
 		}

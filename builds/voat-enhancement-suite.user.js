@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name        Voat Enhancement Suite
-// @version     0.0.4~alpha
+// @version     0.0.4a
 // @description A suite of tools to enhance Voat.
 // @namespace   http://tjg.io/Voat-Enhancement-Suite
 // @author      @travis <travisjgrammer@gmail.com>
@@ -19,12 +19,12 @@
 // ==/UserScript==
 
 /*
-*	Voat Enhancement Suite - Version 0.0.3 - 2015-07-10
+*	Voat Enhancement Suite - Version 0.0.4a - 2015-07-12
 *	
 *	Licensed under GNU General Public License.
 *	https://github.com/travis-g/Voat-Enhancement-Suite/blob/master/LICENSE
 *	
-*	Voat Enhancement Suite Copyright © 2015 @travis <travisjgrammer@gmail.com>
+*	Voat Enhancement Suite Copyright © 2015-2015 @travis <travisjgrammer@gmail.com>
 *	https://github.com/travis-g/Voat-Enhancement-Suite/
 *	Reddit Enhancement Suite Copyright © 2010-2015 honestbleeps <steve@honestbleeps.com>
 *	https://github.com/honestbleeps/Reddit-Enhancement-Suite/
@@ -43,8 +43,8 @@
 *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-var info = {
-	v: '0.0.4~alpha',
+var G = { // globals
+	v: '0.0.4a',
 	namespace: 'VES.',
 	name: 'Voat Enhancement Suite',
 	abbr: 'VES'
@@ -90,6 +90,7 @@ asap = function(test, callback) {
 // DOM utilities
 
 // create a new element with a list of properties
+//@TODO replace this with regular jQuery
 el = function(tag, props) {
 	var el = doc.createElement(tag);
 	// if a JSON of properties is passed in, apply them
@@ -183,18 +184,17 @@ escape = (function() {
 		'<': '&lt;',
 		'>': '&gt;'
 	};
-	var r = String.prototype.replace;
 	var regex = /[&"'<>]/g;
 	var fn = function(x) {
 		return str[x];
 	};
 	return function(text) {
-		return r.call(text, regex, fn);
+		return String.prototype.replace.call(text, regex, fn);
 	};
 })();
 
 // don't kill everything if a JSON parse fails
-safeJSON = function(data, storageSource, silent) {
+JSON.prototype.safeParse = function(data, storageSource, silent) {
 	try {
 		return JSON.parse(data);
 	} catch (e) {
@@ -1683,7 +1683,7 @@ Modules.userTags = {
 
 			this.tags = null;
 			if (typeof tags !== 'undefined') {
-				this.tags = safeJSON(tags, 'userTags.tags', true);
+				this.tags = JSON.safeParse(tags, 'userTags.tags', true);
 			}
 			this.applyTags();
 		}

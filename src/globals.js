@@ -1,4 +1,4 @@
-var info = {
+var G = { // globals
 	v: '<%= meta.version %>',
 	namespace: '<%= meta.abbr %>.',
 	name: '<%= meta.name %>',
@@ -45,6 +45,7 @@ asap = function(test, callback) {
 // DOM utilities
 
 // create a new element with a list of properties
+//@TODO replace this with regular jQuery
 el = function(tag, props) {
 	var el = doc.createElement(tag);
 	// if a JSON of properties is passed in, apply them
@@ -138,18 +139,17 @@ escape = (function() {
 		'<': '&lt;',
 		'>': '&gt;'
 	};
-	var r = String.prototype.replace;
 	var regex = /[&"'<>]/g;
 	var fn = function(x) {
 		return str[x];
 	};
 	return function(text) {
-		return r.call(text, regex, fn);
+		return String.prototype.replace.call(text, regex, fn);
 	};
 })();
 
 // don't kill everything if a JSON parse fails
-safeJSON = function(data, storageSource, silent) {
+JSON.prototype.safeParse = function(data, storageSource, silent) {
 	try {
 		return JSON.parse(data);
 	} catch (e) {
