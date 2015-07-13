@@ -1,0 +1,23 @@
+{
+	"undef": true,
+	"unused": "vars",
+	"quotmark": "single",
+	"strict": false,
+	"jquery": true,
+	"globals": {
+		"doc": true,
+		"cli": true,
+		"info": true,
+
+		"asap": true,
+		"el": true,
+		"add": true,
+
+		"Modules": true,
+		"Utils": true,
+		"Options": true,
+
+		"get": true,
+		"set": true
+	}
+}
