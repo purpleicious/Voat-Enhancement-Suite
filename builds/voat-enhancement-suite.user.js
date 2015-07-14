@@ -1539,7 +1539,7 @@ Modules.hideChildComments = {
 Modules.singleClick = {
 	module: 'singleClick',
 	moduleName: 'Single Click',
-	description: 'Adds an [l+c] link that opens both the link and the comments page in new tabs.',
+	description: 'Adds an extra link that opens both the link and the comments page in new tabs.',
 	options: {
 		openOrder: {
 			type: 'enum',
@@ -1553,7 +1553,7 @@ Modules.singleClick = {
 		hideLEC: {
 			type: 'boolean',
 			value: false,
-			description: 'Hide the [l=c] where the link is the same as the comments page'
+			description: 'Hide the singleClick link where the link is the same as the comments page'
 		}
 	},
 	isEnabled: function() {
@@ -1580,14 +1580,13 @@ Modules.singleClick = {
 		}
 	},
 	go: function() {
-		//if ((this.isMatchURL())) {    // force run
 		if ((this.isEnabled()) && (this.isMatchURL())) {
 			this.applyLinks();
 			// watch for changes to .sitetable, then reapply
 			//Utils.watchForElement('sitetable', Modules.singleClick.applyLinks);
-			doc.body.addEventListener('DOMNodeInserted', function(event) {
-				if ((event.target.tagName == 'DIV') && (event.target.getAttribute('class') == 'sitetable')) {
-					Modules.singleClick.applyLinks();
+			doc.body.addEventListener('DOMNodeInserted', function(e) {
+				if ((e.target.tagName == 'div') && (e.target.getAttribute('class') == 'sitetable')) {
+					Modules.singleClick.applyLinks(e.target);
 				}
 			}, true);
 		}
@@ -1596,8 +1595,8 @@ Modules.singleClick = {
 		ele = ele || doc;
 		var entries = $('.sitetable>.submission .entry', ele); // beware of .alert-featuredsub!
 		for (var i = 0, len = entries.length; i < len; i++) {
-			if ((typeof entries[i] !== 'undefined') && (!entries[i].classList.contains('lcTagged'))) {
-				entries[i].className += 'lcTagged';
+			if ((typeof entries[i] !== 'undefined') && (!$(entries[i]).hasClass('lcTagged'))) {
+				$(entries[i]).addClass('lcTagged');
 				this.titleLA = entries[i].querySelector('A.title');
 				if (this.titleLA !== null) {
 					var thisLink = $(this.titleLA).attr('href');
@@ -1616,9 +1615,9 @@ Modules.singleClick = {
 					singleClickLink.setAttribute('thisLink',thisLink);
 					singleClickLink.setAttribute('thisComments',thisComments);
 					if (thisLink != thisComments) {
-						singleClickLink.innerHTML = '[l+c]';
+						singleClickLink.innerHTML = 'l+c';
 					} else if (!(this.options.hideLEC.value)) {
-						singleClickLink.innerHTML = '[l=c]';
+						singleClickLink.innerHTML = 'l=c';
 					}
 					add(singleClickLI, singleClickLink);
 					add(thisUL, singleClickLI);
