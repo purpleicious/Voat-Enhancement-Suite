@@ -53,6 +53,23 @@
 			});
 			// inject the CSS from all the modules
 			Utils.applyCSS(Utils.css, 'VESStyles');
+		},
+		updated: function() {
+			return get('previousversion', function(items) {
+				if (items) {
+					v = items.previousversion;
+					if (v === G.v) {
+						// we're running the same version as last run,
+						// don't do anything
+						return;
+					}
+					if (v) {
+						alert('VES has been updated to version ' + G.v + '.');
+						//@TODO point users to changelog, if desired
+					}
+				}
+				return set('previousversion', G.v);
+			})
 		}
 	};
 	VES.init();
