@@ -2,3 +2,5 @@ languages:
 	JavaScript: true
 	CSS: true
 	HTML: true
+exclude_paths:
+-	"builds/*"
