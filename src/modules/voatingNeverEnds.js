@@ -131,20 +131,21 @@ Modules.voatingNeverEnds = {
 					Modules.voatingNeverEnds.loader.parentNode.removeChild(Modules.voatingNeverEnds.loader);
 				}
 				// just get the HTML
-				var response = response.responseText;
+				// 
+				var response = response;
 				var temp = el('div', {
 					// rip any JavaScript
 					innerHTML: response.replace(/<script(.|\s)*?\/script>/g, '')
 				});
 
 				var html = $('.sitetable', temp);
-				var st = $('.sitetable', tmp); // should be an array
+				var st = $('.sitetable', temp); // should be an array
 
 				// run any modules on .sitetable before adding
 
 				var links = temp.querySelectorAll('.pagination-container .btn-whoaverse-paging a');
 				var next = links[links.length - 1];
-				Modules.voatingNeverEnds.sitetable.appendChild(html);
+				$(Modules.voatingNeverEnds.sitetable).append(html);
 				Modules.voatingNeverEnds.isLoading = false;
 				if (next) {
 					Modules.voatingNeverEnds.nextPage = next.href;
