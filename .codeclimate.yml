@@ -4,3 +4,4 @@ languages:
 	HTML: true
 exclude_paths:
 -	"builds/*"
+-	"src/vendor/*"
