@@ -20,6 +20,8 @@ Thank you!
 
 ## Development
 
+[![Code Climate][ccsvg]][cc]
+
 If you have JavaScript/jQuery experience (or would like some), fork VES and tinker around. If you optimize a module, create a new one, or if you're willing to share some code that you've thrown together, create a GitHub issue or submit to [/v/Enhancement][subverse].
 
 Above all, any contributions to VES will be graciously credited!
@@ -65,3 +67,5 @@ VES is reported to work on Safari with Tampermonkey, but has not been tested off
 [dl]: https://github.com/travis-g/Voat-Enhancement-Suite/raw/master/builds/voat-enhancement-suite.user.js
 [voat]: https://voat.co/
 [subverse]: https://voat.co/v/Enhancement/
+[cc]: https://codeclimate.com/github/travis-g/Voat-Enhancement-Suite/
+[ccsvg]: https://codeclimate.com/github/travis-g/Voat-Enhancement-Suite/badges/gpa.svg
