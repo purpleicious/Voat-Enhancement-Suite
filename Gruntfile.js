@@ -26,8 +26,8 @@ module.exports = function(grunt) {
 			},
 			userscript: {
 				src: [
-					'src/metablock.js',
-					'src/license.js',
+					'src/meta/metablock.js',
+					'src/meta/license.js',
 					'src/globals.js',
 					'src/core/storage.js',
 					'src/core/system.js',
