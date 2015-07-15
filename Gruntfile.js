@@ -61,9 +61,9 @@ module.exports = function(grunt) {
 			},
 			all: {
 				src: [
-					// don't check builds/
-					'src/*.js',
+					// only check source files
 					'src/**/*.js'
+					'!src/vendor/*.js' // don't check vendor libs
 				]
 			}
 		}
