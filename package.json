@@ -20,7 +20,7 @@
 			"openInTab"
 		],
 		"requires": [
-			"http://code.jquery.com/jquery-latest.js"
+			"http://code.jquery.com/jquery-1.11.3.min.js"
 		],
 		"files": {
 			"metablock": "voat-enhancement-suite.meta.js",
