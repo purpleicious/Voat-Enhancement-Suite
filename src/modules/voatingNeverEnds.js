@@ -51,17 +51,15 @@ Modules.voatingNeverEnds = {
 			this.sitetable = st[0];
 
 			// get the navigation links
-			var links = $('.pagination-container .btn-whoaverse-paging a', doc.body);
-			if (links.length > 0) {
-				var next = links[links.length-1];
-				if (next) {
-					this.nextURL = next.href;
-					var nextPos = Utils.getXYpos(next);
-					this.nextPageScrollY = nextPos.y;
-				}
+			var link = $('.pagination-container .btn-whoaverse-paging a[rel=next]');
 
+			if (link.length > 0) {
+				this.nextURL = $(link).attr('href');
+				var nextPos = Utils.getXYpos(link);
+				this.nextPageScrollY = nextPos.y;
+				$(link).remove();
+				
 				this.attachLoader();
-
 				var currPageRegex = /\?page=([0-9]+)/i;
 				var backPage = currPageRegex.exec(location.href);
 				if (backPage) {
@@ -75,12 +73,6 @@ Modules.voatingNeverEnds = {
 						Modules.voatingNeverEnds.loadPage();
 					}
 				}, false);
-
-				var pagination = $('.pagination-container');
-				for (var i = 0, len = pagination.length; i < len; i++) {
-					pagination[i].style.display = 'none';
-				}
-
 			}
 		}
 	},
@@ -115,6 +107,7 @@ Modules.voatingNeverEnds = {
 		// } else {
 			this.fromBackButton = false;
 		// }
+		this.go();
 		cli.log('triggered loadPage for '+this.nextURL);
 		if (this.isLoading !== true) {
 			this.loader.innerHTML = 'Sit tight...';
