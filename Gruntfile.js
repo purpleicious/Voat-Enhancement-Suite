@@ -1,16 +1,16 @@
 module.exports = function(grunt) {
-	// Unix-style newlines (Windows uses '\r\n')
+	'use strict';
+
 	grunt.util.linefeed = '\n';
 
 	grunt.initConfig({
-		// get the package's info
 		pkg: grunt.file.readJSON('package.json'),
 
+		clean: ['builds'],
 		concat: {
 			options: {
-				// parse any templates Grunt finds
 				process: Object.create(null, {
-					// use the package info
+					// process Grunt templates using project.json
 					data: {
 						get: function() {
 							var pkg = grunt.config('pkg');
@@ -21,8 +21,8 @@ module.exports = function(grunt) {
 				})
 			},
 			metablock: {
-				src: 'src/metablock.js',
-				dest: 'builds/<%= pkg.name %>.meta.js',
+				src: 'src/meta/metablock.js',
+				dest: 'builds/<%= pkg.name %>.meta.js'
 			},
 			userscript: {
 				src: [
@@ -39,17 +39,35 @@ module.exports = function(grunt) {
 				dest: 'builds/<%= pkg.name %>.user.js'
 			}
 		},
-		// delete the /builds folder before each run
-		clean: ['builds'],
+		copy: {
+			options: {
+				process: Object.create(null, {
+					// process Grunt templates using project.json
+					data: {
+						get: function() {
+							var pkg = grunt.config('pkg');
+							return pkg;
+						},
+						enumerable: true // required for Array.map()
+					}
+				})
+			},
+			chrome: {
+				//	@TODO copy script, icons, manifest into builds/Chrome
+			}
+		},
+		compress: {
+			chrome: {
+				//	@TODO compress builds/Chrome to 'builds/<%= pkg.name %>.zip'
+			}
+		},
 		watch: {
 			options: {
 				interrupt: true
 			},
 			all: {
-				// files to watch
 				files: ['Gruntfile.js', 'package.json', 'src/*', 'src/**/*'],
-				// rebuild the files on every source/config file change
-				tasks: ['build', 'jshint']
+				tasks: ['build']
 			}
 		},
 		jshint: {
@@ -62,17 +80,17 @@ module.exports = function(grunt) {
 			all: {
 				src: [
 					// only check source files
-					'src/**/*.js'
-					'!src/vendor/*.js' // don't check vendor libs
+					'src/**/*.js',
+					'!src/vendor/*.js'
 				]
 			}
 		}
 	});
-	// run grunt.loadNpmTasks() for every plugin automatically
+
 	require('load-grunt-tasks')(grunt);
 
 	grunt.registerTask('default', ['build']);
 
-	grunt.registerTask('build', ['clean', 'concat']);
+	grunt.registerTask('build', ['clean', 'concat', 'copy', 'compress']);
 	grunt.registerTask('jshint', ['jshint:all']);
 };
