@@ -1585,7 +1585,9 @@ Modules.singleClick = {
 			// watch for changes to .sitetable, then reapply
 			//Utils.watchForElement('sitetable', Modules.singleClick.applyLinks);
 			doc.body.addEventListener('DOMNodeInserted', function(e) {
-				if ((e.target.tagName == 'div') && (e.target.getAttribute('class') == 'sitetable')) {
+				cli.log(e);
+				if ((e.target.tagName === 'DIV') && (e.target.className === 'sitetable')) {
+					cli.log('content inserted into sitetable, running singleClick.applyLinks');
 					Modules.singleClick.applyLinks(e.target);
 				}
 			}, true);
