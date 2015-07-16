@@ -13,7 +13,7 @@
 // @grant       GM_listValues
 // @grant       GM_openInTab
 // @run-at      document-start
-// @require     http://code.jquery.com/jquery-latest.js
+// @require     http://code.jquery.com/jquery-1.11.3.min.js
 // @updateURL   voat-enhancement-suite.meta.js
 // @downloadURL voat-enhancement-suite.user.js
 // ==/UserScript==

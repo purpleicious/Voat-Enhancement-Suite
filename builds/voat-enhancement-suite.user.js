@@ -13,13 +13,13 @@
 // @grant       GM_listValues
 // @grant       GM_openInTab
 // @run-at      document-start
-// @require     http://code.jquery.com/jquery-latest.js
+// @require     http://code.jquery.com/jquery-1.11.3.min.js
 // @updateURL   voat-enhancement-suite.meta.js
 // @downloadURL voat-enhancement-suite.user.js
 // ==/UserScript==
 
 /*
-*	Voat Enhancement Suite - Version 0.0.4a - 2015-07-10
+*	Voat Enhancement Suite - Version 0.0.4a - 2015-07-15
 *
 *	Licensed under GNU General Public License.
 *	https://github.com/travis-g/Voat-Enhancement-Suite/blob/master/LICENSE
@@ -1926,17 +1926,15 @@ Modules.voatingNeverEnds = {
 			this.sitetable = st[0];
 
 			// get the navigation links
-			var links = $('.pagination-container .btn-whoaverse-paging a', doc.body);
-			if (links.length > 0) {
-				var next = links[links.length-1];
-				if (next) {
-					this.nextURL = next.href;
-					var nextPos = Utils.getXYpos(next);
-					this.nextPageScrollY = nextPos.y;
-				}
+			var link = $('.pagination-container .btn-whoaverse-paging a[rel=next]');
 
+			if (link.length > 0) {
+				this.nextURL = $(link).attr('href');
+				var nextPos = Utils.getXYpos(link);
+				this.nextPageScrollY = nextPos.y;
+				$(link).remove();
+				
 				this.attachLoader();
-
 				var currPageRegex = /\?page=([0-9]+)/i;
 				var backPage = currPageRegex.exec(location.href);
 				if (backPage) {
@@ -1950,12 +1948,6 @@ Modules.voatingNeverEnds = {
 						Modules.voatingNeverEnds.loadPage();
 					}
 				}, false);
-
-				var pagination = $('.pagination-container');
-				for (var i = 0, len = pagination.length; i < len; i++) {
-					pagination[i].style.display = 'none';
-				}
-
 			}
 		}
 	},
@@ -1990,6 +1982,7 @@ Modules.voatingNeverEnds = {
 		// } else {
 			this.fromBackButton = false;
 		// }
+		this.go();
 		cli.log('triggered loadPage for '+this.nextURL);
 		if (this.isLoading !== true) {
 			this.loader.innerHTML = 'Sit tight...';
@@ -2006,20 +1999,21 @@ Modules.voatingNeverEnds = {
 					Modules.voatingNeverEnds.loader.parentNode.removeChild(Modules.voatingNeverEnds.loader);
 				}
 				// just get the HTML
-				var response = response.responseText;
+				// 
+				var response = response;
 				var temp = el('div', {
 					// rip any JavaScript
 					innerHTML: response.replace(/<script(.|\s)*?\/script>/g, '')
 				});
 
 				var html = $('.sitetable', temp);
-				var st = $('.sitetable', tmp); // should be an array
+				var st = $('.sitetable', temp); // should be an array
 
 				// run any modules on .sitetable before adding
 
 				var links = temp.querySelectorAll('.pagination-container .btn-whoaverse-paging a');
 				var next = links[links.length - 1];
-				Modules.voatingNeverEnds.sitetable.appendChild(html);
+				$(Modules.voatingNeverEnds.sitetable).append(html);
 				Modules.voatingNeverEnds.isLoading = false;
 				if (next) {
 					Modules.voatingNeverEnds.nextPage = next.href;
@@ -2040,7 +2034,6 @@ Modules.voatingNeverEnds = {
 		// @TODO
 	}
 };
-
 (function() {
 
 	// see if we can access anything
@@ -2096,6 +2089,23 @@ Modules.voatingNeverEnds = {
 			});
 			// inject the CSS from all the modules
 			Utils.applyCSS(Utils.css, 'VESStyles');
+		},
+		updated: function() {
+			return get('previousversion', function(items) {
+				if (items) {
+					v = items.previousversion;
+					if (v === G.v) {
+						// we're running the same version as last run,
+						// don't do anything
+						return;
+					}
+					if (v) {
+						alert('VES has been updated to version ' + G.v + '.');
+						//@TODO point users to changelog, if desired
+					}
+				}
+				return set('previousversion', G.v);
+			})
 		}
 	};
 	VES.init();
