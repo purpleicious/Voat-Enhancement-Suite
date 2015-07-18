@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name        Voat Enhancement Suite
-// @version     0.0.4a
+// @version     0.0.3
 // @description A suite of tools to enhance Voat.
 // @namespace   http://tjg.io/Voat-Enhancement-Suite
 // @author      @travis <travisjgrammer@gmail.com>
@@ -19,7 +19,7 @@
 // ==/UserScript==
 
 /*
-*	Voat Enhancement Suite - Version 0.0.4a - 2015-07-15
+*	Voat Enhancement Suite - Version 0.0.3 - 2015-07-18
 *
 *	Licensed under GNU General Public License.
 *	https://github.com/travis-g/Voat-Enhancement-Suite/blob/master/LICENSE
@@ -44,7 +44,7 @@
 */
 
 var G = { // globals
-	v: '0.0.4a',
+	v: '0.0.4-alpha',
 	namespace: 'VES.',
 	name: 'Voat Enhancement Suite',
 	abbr: 'VES'
@@ -1176,7 +1176,7 @@ Options = {
 		saveButton.addEventListener('click', function(e) {
 			e.preventDefault();
 			cli.log('Saving module config');
-			var optionsDiv = id('OptionsPanel');
+			var optionsDiv = id('VESPanelOptions');
 			var inputs = $('input', optionsDiv); // get all the inputs
 			for (var i = 0, len = inputs.length; i < len; i++) {
 				cli.log(inputs[i]);
@@ -1186,7 +1186,7 @@ Options = {
 					} else {
 						var optionName = inputs[i].getAttribute('id');
 					}
-					var module = inputs[i].getAttribute('moduleID');
+					var module = inputs[i].getAttribute('moduleid');
 					cli.log(module);
 					if (inputs[i].getAttribute('type') === 'checkbox') {
 						(inputs[i].checked) ? value = true : value = false;
@@ -1204,7 +1204,7 @@ Options = {
 							var value = inputs[i].value;
 						}
 					}
-					if (typeof value != 'undefined') {
+					if (typeof value !== 'undefined') {
 						cli.log('Setting options for ' + module);
 						Options.setOption(module, optionName, value);
 					}
@@ -1227,7 +1227,7 @@ Options = {
 							var inputs = $('input', rows[j]);
 							var blank = true;
 							for (var k = 0; k < inputs.length; k++) {
-								var module = inputs[k].getAttribute('module');
+								var module = inputs[k].getAttribute('moduleid');
 								if (inputs[k].getAttribute('type') === 'checkbox') {
 									(inputs[k].checked) ? value = true : value = false;
 								} else if (inputs[k].getAttribute('type') === 'radio') {
@@ -1418,6 +1418,7 @@ Modules.debug = {
 		}
 	}
 };
+
 Modules.hideChildComments = {
 	module: 'hideChildComments',
 	moduleName: 'Hide All Child Comments',
