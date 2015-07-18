@@ -1,5 +1,5 @@
 var G = { // globals
-	v: '<%= meta.version %>',
+	v: '<%= meta.version_name %>',
 	namespace: '<%= meta.abbr %>.',
 	name: '<%= meta.name %>',
 	abbr: '<%= meta.abbr %>'
