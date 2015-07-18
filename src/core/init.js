@@ -1,9 +1,13 @@
 (function() {
 
-	// see if we can access anything
-	testLocalStorage();
-
 	var VES = { // for the extension itself
+		preInit: function() {
+			//@TODO check if VES should run
+			// VES shouldn't run/show on the API or CloudFlare pages
+
+			// see if we can access storage(s):
+			this.testStorage();
+		},
 		init: function() {
 			this.loadOptions();
 
@@ -69,7 +73,25 @@
 					}
 				}
 				return set('previousversion', G.v);
-			})
+			});
+		},
+		testStorage: function() {
+			var accessible = true;
+
+			try {
+				localStorage.setItem('VES.test', 'test');
+				GM_setValue('VES.test', 'test');
+				localStorage.removeItem('VES.test');
+				GM_deleteValue('VES.test');
+			} catch (e) {
+				accessible = false;
+			}
+
+			if (!(accessible)) {
+				cli.err('localStorage is unavailable. Are you in a private session?');
+				cli.warn('VES will run using sessionStorage (no changes will persist).');
+				localStorage = sessionStorage || unsafeWindow.sessionStorage;
+			}
 		}
 	};
 	VES.init();

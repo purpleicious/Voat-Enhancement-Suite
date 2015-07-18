@@ -97,22 +97,3 @@ _delete = function(keys) {
 		GM_deleteValue(key);
 	}
 };
-
-function testLocalStorage() {
-	var accessible = true;
-
-	try {
-		localStorage.setItem('VES.test', 'test');
-		GM_setValue('VES.test', 'test');
-		localStorage.removeItem('VES.test');
-		GM_deleteValue('VES.test');
-	} catch (e) {
-		accessible = false;
-	}
-
-	if (!(accessible)) {
-		cli.err('localStorage is unavailable. Are you in a private session?');
-		cli.warn('VES will run using sessionStorage (no changes will persist).');
-		localStorage = sessionStorage || unsafeWindow.sessionStorage;
-	}
-}

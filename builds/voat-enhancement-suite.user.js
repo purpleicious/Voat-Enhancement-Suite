@@ -334,25 +334,6 @@ _delete = function(keys) {
 	}
 };
 
-function testLocalStorage() {
-	var accessible = true;
-
-	try {
-		localStorage.setItem('VES.test', 'test');
-		GM_setValue('VES.test', 'test');
-		localStorage.removeItem('VES.test');
-		GM_deleteValue('VES.test');
-	} catch (e) {
-		accessible = false;
-	}
-
-	if (!(accessible)) {
-		cli.err('localStorage is unavailable. Are you in a private session?');
-		cli.warn('VES will run using sessionStorage (no changes will persist).');
-		localStorage = sessionStorage || unsafeWindow.sessionStorage;
-	}
-}
-
 // register the OS, browser, and so on.
 var System = {
 	init: function() {
@@ -1586,7 +1567,7 @@ Modules.singleClick = {
 			// watch for changes to .sitetable, then reapply
 			//Utils.watchForElement('sitetable', Modules.singleClick.applyLinks);
 			doc.body.addEventListener('DOMNodeInserted', function(e) {
-				cli.log(e);
+				// cli.log(e);
 				if ((e.target.tagName === 'DIV') && (e.target.className === 'sitetable')) {
 					cli.log('content inserted into sitetable, running singleClick.applyLinks');
 					Modules.singleClick.applyLinks(e.target);
@@ -2039,10 +2020,14 @@ Modules.voatingNeverEnds = {
 };
 (function() {
 
-	// see if we can access anything
-	testLocalStorage();
-
 	var VES = { // for the extension itself
+		preInit: function() {
+			//@TODO check if VES should run
+			// VES shouldn't run/show on the API or CloudFlare pages
+
+			// see if we can access storage(s):
+			this.testStorage();
+		},
 		init: function() {
 			this.loadOptions();
 
@@ -2108,7 +2093,25 @@ Modules.voatingNeverEnds = {
 					}
 				}
 				return set('previousversion', G.v);
-			})
+			});
+		},
+		testStorage: function() {
+			var accessible = true;
+
+			try {
+				localStorage.setItem('VES.test', 'test');
+				GM_setValue('VES.test', 'test');
+				localStorage.removeItem('VES.test');
+				GM_deleteValue('VES.test');
+			} catch (e) {
+				accessible = false;
+			}
+
+			if (!(accessible)) {
+				cli.err('localStorage is unavailable. Are you in a private session?');
+				cli.warn('VES will run using sessionStorage (no changes will persist).');
+				localStorage = sessionStorage || unsafeWindow.sessionStorage;
+			}
 		}
 	};
 	VES.init();
