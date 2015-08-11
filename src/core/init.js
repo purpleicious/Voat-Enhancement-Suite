@@ -2,11 +2,14 @@
 
 	var VES = { // for the extension itself
 		preInit: function() {
-			//@TODO check if VES should run
-			// VES shouldn't run/show on the API or CloudFlare pages
+			//@TODO disable VES on the API
+			if (!Utils.isCloudFlarePage()) {
+				// see if we can access storage(s):
+				//@TODO this was never run before so I'm not gonna run it now
+				//this.testStorage();
 
-			// see if we can access storage(s):
-			this.testStorage();
+				this.init();
+			}
 		},
 		init: function() {
 			this.loadOptions();
@@ -94,6 +97,12 @@
 			}
 		}
 	};
-	VES.init();
+
+	//waiting for document to load so we can check
+	//for API or CloudFlare page
+	$(document).ready(function() {
+		VES.preInit();
+	});
+
 
 }).call(this);

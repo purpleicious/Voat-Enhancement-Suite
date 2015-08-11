@@ -19,7 +19,7 @@
 // ==/UserScript==
 
 /*
-*	Voat Enhancement Suite - Version 0.0.3 - 2015-07-18
+*	Voat Enhancement Suite - Version 0.0.3 - 2015-08-10
 *
 *	Licensed under GNU General Public License.
 *	https://github.com/travis-g/Voat-Enhancement-Suite/blob/master/LICENSE
@@ -665,6 +665,15 @@ Utils = {
 		this.isDarkModeCached = $('body').hasClass('dark');
 		return this.isDarkModeCached;
 	},
+	isCloudFlarePage: function() {
+		// check if user is on the CloudFlare page
+		if ($('form#challenge-form').length > 0) {
+			alert('Is CloudFlare');
+			return true;
+		}
+
+		return false;
+	}
 };
 
 var SettingsConsole = '';
@@ -2022,11 +2031,14 @@ Modules.voatingNeverEnds = {
 
 	var VES = { // for the extension itself
 		preInit: function() {
-			//@TODO check if VES should run
-			// VES shouldn't run/show on the API or CloudFlare pages
+			//@TODO disable VES on the API
+			if (!Utils.isCloudFlarePage()) {
+				// see if we can access storage(s):
+				//@TODO this was never run before so I'm not gonna run it now
+				//this.testStorage();
 
-			// see if we can access storage(s):
-			this.testStorage();
+				this.init();
+			}
 		},
 		init: function() {
 			this.loadOptions();
@@ -2114,6 +2126,12 @@ Modules.voatingNeverEnds = {
 			}
 		}
 	};
-	VES.init();
+
+	//waiting for document to load so we can check
+	//for API or CloudFlare page
+	$(document).ready(function() {
+		VES.preInit();
+	});
+
 
 }).call(this);

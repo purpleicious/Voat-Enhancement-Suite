@@ -240,4 +240,13 @@ Utils = {
 		this.isDarkModeCached = $('body').hasClass('dark');
 		return this.isDarkModeCached;
 	},
+	isCloudFlarePage: function() {
+		// check if user is on the CloudFlare page
+		if ($('form#challenge-form').length > 0) {
+			alert('Is CloudFlare');
+			return true;
+		}
+
+		return false;
+	}
 };
